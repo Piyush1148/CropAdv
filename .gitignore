@@ -144,3 +144,4 @@ crop_advisory_backend\debug_groq.py
 crop_advisory_backend\debug_weather_router.py
 crop_advisory\README.md
 crop_advisory\final_dashboard_verification.py
+.gitignore
