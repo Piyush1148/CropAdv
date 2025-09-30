@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crop Advisory Debug</title>
+    <style>
+      body { 
+        font-family: Arial, sans-serif; 
+        margin: 0; 
+        padding: 20px;
+        background-color: #f0f0f0;
+      }
+      #loading { 
+        padding: 20px; 
+        background-color: #fff3cd; 
+        border: 1px solid #ffeaa7; 
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      #error-display {
+        padding: 20px;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        margin-top: 10px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">
+      <h2>🔄 Loading React App...</h2>
+      <p>If you see this message for more than a few seconds, there may be a JavaScript loading issue.</p>
+      <p>Check the browser console for errors (Press F12 → Console tab).</p>
+      <p id="timestamp">Loaded at: <span id="time"></span></p>
+    </div>
+    <div id="error-display">
+      <h2>❌ JavaScript Error Detected</h2>
+      <p>Check browser console (F12 → Console) for detailed error information.</p>
+      <pre id="error-details"></pre>
+    </div>
+    <div id="root"></div>
+    
+    <script>
+      // Comprehensive error logging and debugging
+      console.log('🚀 HTML loaded, starting React app diagnosis...');
+      
+      // Update timestamp
+      document.getElementById('time').textContent = new Date().toISOString();
+      
+      // Global error handler to catch JavaScript errors
+      window.addEventListener('error', function(event) {
+        console.error('❌ Global JavaScript Error:', event.error);
+        const errorDiv = document.getElementById('error-display');
+        const errorDetails = document.getElementById('error-details');
+        errorDiv.style.display = 'block';
+        errorDetails.textContent = `Error: ${event.error.message}\nFile: ${event.filename}:${event.lineno}:${event.colno}\nStack: ${event.error.stack}`;
+      });
+      
+      // Catch unhandled promise rejections
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('❌ Unhandled Promise Rejection:', event.reason);
+        const errorDiv = document.getElementById('error-display');
+        errorDiv.style.display = 'block';
+        document.getElementById('error-details').textContent = `Promise Rejection: ${event.reason}`;
+      });
+      
+      // Monitor React mounting
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length > 0) {
+            console.log('✅ React content detected, React is mounting!');
+            document.getElementById('loading').style.display = 'none';
+          }
+        });
+      });
+      
+      observer.observe(document.getElementById('root'), {
+        childList: true,
+        subtree: true
+      });
+      
+      // Enhanced timeout with detailed failure message
+      setTimeout(() => {
+        const loader = document.getElementById('loading');
+        const rootEl = document.getElementById('root');
+        
+        if (loader.style.display !== 'none' && rootEl.innerHTML.trim() === '') {
+          console.error('❌ React failed to mount after 8 seconds');
+          loader.innerHTML = `
+            <h2>❌ React Failed to Load</h2>
+            <p><strong>Diagnosis Steps:</strong></p>
+            <ol>
+              <li>Press F12 to open Developer Tools</li>
+              <li>Go to Console tab</li>
+              <li>Look for red error messages</li>
+              <li>Check Network tab for failed requests</li>
+            </ol>
+            <p><strong>Common Issues:</strong></p>
+            <ul>
+              <li>JavaScript syntax errors</li>
+              <li>Import/export errors</li>
+              <li>Missing dependencies</li>
+              <li>Circular imports</li>
+            </ul>
+          `;
+          loader.style.backgroundColor = '#f8d7da';
+          loader.style.borderColor = '#f5c6cb';
+        }
+      }, 8000);
+      
+      // Log module loading
+      console.log('📦 About to load main.jsx module...');
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Static HTML Test</h1>
+    <p>If you can see this, the server is serving static files correctly.</p>
+    <script>
+        console.log('Static HTML loaded successfully');
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM ready');
+            alert('Static HTML is working! Check console for logs.');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+# ===================================================================
+# SECRETS & CREDENTIALS (IMPORTANT!)
+# Never commit secrets, API keys, or service account files.
+# ===================================================================
+.env
+*.env
+*.env.local
+firebase-service-account.json
+*-service-account.json
+
+
+# ===================================================================
+# DEPENDENCIES & VIRTUAL ENVIRONMENTS
+# ===================================================================
+# Node / Frontend
+node_modules/
+
+# Python / Backend
+venv/
+env/
+.venv/
+.env/
+crop_advisory_env/
+
+
+# ===================================================================
+# BUILD OUTPUT & COMPILED FILES
+# ===================================================================
+# Frontend
+dist/
+dist-ssr/
+build/
+.npm/
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+
+# ===================================================================
+# IGNORED SOURCE FILES & SCRIPTS
+# ===================================================================
+# Ignore all test files
+*test*.py
+*test*.js
+*test*.jsx
+
+# Ignore all markdown files, but KEEP the README.md
+*.md
+!README.md
+
+# Ignore script files
+*.sh
+*.bat
+
+
+# ===================================================================
+# LOGS
+# ===================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# ===================================================================
+# OS, IDE & EDITOR FILES
+# ===================================================================
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+
+# JetBrains / PyCharm
+.idea/
+
+# Other
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+
+
+# ===================================================================
+# TESTING & CACHING (Generated Files)
+# ===================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+# ===================================================================
+# DATASETS, ML MODELS & DATABASE DUMPS
+# ===================================================================
+# Add your trained model files here
+ml_models/*.pkl
+ml_models/*.joblib
+ml_models/*.h5
+ml_models/*.pb
+
+# Redis
+dump.rdb
+
+
+# other files inclided in .gitignore manually
+timeout_fixes_validation.js
+test_api.ps1
+simple_backend.py
+model_export_guide.ipynb
+minimal_fixed_backend.py
+frontend_weather_validation.js
+error_resolution_validation.js
+Crop_recommendation.csv
+crop_advisory_backend\debug_groq.py
+crop_advisory_backend\README.md
+crop_advisory_backend\fix_regex.py
+crop_advisory_backend\diagnose_weather.py
+crop_advisory_backend\debug_groq.py
+crop_advisory_backend\debug_weather_router.py
+crop_advisory\README.md
+crop_advisory\final_dashboard_verification.py
