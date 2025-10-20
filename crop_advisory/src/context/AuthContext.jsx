@@ -173,11 +173,11 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.REGISTER_START });
 
     try {
-      // First, register with Firebase
+      // First, register with Firebase Auth (client-side)
       const firebaseResult = await authService.signUp(userData.email, userData.password, userData.name);
       
       if (firebaseResult.success) {
-        // Store additional farm profile data in localStorage
+        // Store additional farm profile data in localStorage (backup)
         const farmProfile = {
           farmSize: userData.farmSize || 0,
           location: userData.location || '',
@@ -188,43 +188,71 @@ export const AuthProvider = ({ children }) => {
         
         localStorage.setItem(`farmProfile_${firebaseResult.user.uid}`, JSON.stringify(farmProfile));
 
-        // Then register with our backend to create Firestore user document
+        // ✅ CRITICAL: Create user profile in backend AFTER Firebase Auth success
+        console.log('🔄 Attempting to create user profile in backend...');
+        console.log('User UID:', firebaseResult.user.uid);
+        
+        // Wait for Firebase Auth to fully sync
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
         try {
-          const { userService } = await import('../services/userService');
-          await userService.registerUser({
+          // Import axios directly
+          const axios = (await import('axios')).default;
+          
+          // Try PUBLIC endpoint first (easier for testing, no auth issues)
+          console.log('🔵 Trying PUBLIC profile creation endpoint...');
+          
+          const publicResponse = await axios.post('http://localhost:8000/api/auth/setup-profile-public', {
+            uid: firebaseResult.user.uid,
+            full_name: userData.name,
             email: userData.email,
-            password: userData.password,
-            displayName: userData.name,
-            fullName: userData.name
+            phone_number: userData.phone,
+            location: userData.location,
+            farm_size: userData.farmSize ? parseFloat(userData.farmSize) : null,
+            soil_type: userData.soilType,
+            irrigation_type: userData.irrigationType
           });
-          if (import.meta.env.DEV) {
-            console.log('✅ User registered in backend successfully');
+          
+          if (publicResponse.data && publicResponse.data.success) {
+            console.log('✅ ✅ ✅ PUBLIC: Profile created successfully!');
+            console.log('Profile UID:', publicResponse.data.uid);
+            console.log('Full response:', publicResponse.data);
+          } else {
+            console.warn('⚠️ Public profile creation response:', publicResponse.data);
           }
           
-          // CRITICAL: Also create enhanced profile with complete signup data
+        } catch (publicError) {
+          console.error('❌ PUBLIC profile creation failed, trying authenticated...');
+          console.error('Public Error:', publicError.response?.data || publicError.message);
+          
+          // Fallback to authenticated endpoint
           try {
-            await userService.setupProfileFromSignupDataPublic({
-              user_id: firebaseResult.user.uid,  // Pass the Firebase UID
-              signup_data: {
-                name: userData.name,
-                phone: userData.phone,
-                location: userData.location,
-                farmSize: userData.farmSize,
-                soilType: userData.soilType,
-                irrigationType: userData.irrigationType
-              }
+            const token = await firebaseResult.user.getIdToken(true);
+            console.log('✅ Got Firebase token, trying authenticated endpoint...');
+            
+            const { default: apiClient } = await import('../services/apiService');
+            
+            const authResponse = await apiClient.post('/auth/setup-profile', {
+              full_name: userData.name,
+              email: userData.email,
+              phone_number: userData.phone,
+              location: userData.location,
+              farm_size: userData.farmSize ? parseFloat(userData.farmSize) : null,
+              soil_type: userData.soilType,
+              irrigation_type: userData.irrigationType
             });
-            if (import.meta.env.DEV) {
-              console.log('✅ Enhanced profile created from signup data using public endpoint');
+            
+            if (authResponse.data && authResponse.data.success) {
+              console.log('✅ ✅ ✅ AUTHENTICATED: Profile created successfully!');
+              console.log('Profile UID:', authResponse.data.uid);
             }
-          } catch (profileError) {
-            console.error('❌ Enhanced profile creation failed:', profileError);
-            // This is critical - we need the full profile for AI personalization
+            
+          } catch (authError) {
+            console.error('❌ ❌ ❌ Both profile creation methods FAILED');
+            console.error('Auth Error:', authError.response?.data || authError.message);
+            console.error('Status:', authError.response?.status);
+            // Don't fail registration completely
           }
-          
-        } catch (backendError) {
-          console.warn('⚠️ Backend registration failed, but Firebase registration succeeded:', backendError);
-          // Don't fail the entire registration if backend fails
         }
         
         // Firebase auth state listener will handle the success state

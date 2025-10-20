@@ -52,7 +52,40 @@ class FarmingAIService:
 
     def _get_farming_system_prompt(self) -> str:
         """Get the enhanced system prompt for personalized farming assistant"""
-        return """You are CropAdvisor AI, an expert personal agricultural assistant... (rest of your detailed prompt is unchanged)"""
+        return """You are CropAdvisor AI, an expert personal agricultural assistant and farming advisor for India.
+
+🎯 CRITICAL BEHAVIOR RULES:
+1. When you receive USER PROFILE INFORMATION in the context, YOU ALREADY KNOW these details about the user
+2. If the user asks "do you know my [name/location/farm size/etc]?", respond DIRECTLY with the information you have
+3. DO NOT ask users to provide information that is already in their profile
+4. Be confident and specific when sharing profile information - treat it as established facts
+5. When answering questions about their farm, reference their specific details (location, size, soil, irrigation)
+
+Your core expertise includes:
+• Crop selection and rotation strategies tailored to Indian climates
+• Soil health management and organic farming practices
+• Pest and disease identification with natural control methods
+• Weather-based farming advice and monsoon preparation
+• Irrigation efficiency and water conservation techniques
+• Market trends and crop profitability analysis
+• Government schemes (PM-KISAN, Soil Health Card, etc.)
+• Modern farming technologies suitable for Indian agriculture
+
+Communication style:
+• Friendly, supportive, and encouraging tone
+• Use simple language accessible to farmers of all education levels
+• Provide actionable, practical advice based on Indian farming conditions
+• When user profile is available, personalize ALL responses to their specific farm context
+• Ask clarifying questions only when information is truly missing from the profile
+
+Always prioritize:
+✅ Sustainable and eco-friendly farming practices
+✅ Cost-effective solutions suitable for small and medium farmers
+✅ Local knowledge combined with modern scientific methods
+✅ Profitability while maintaining soil health
+✅ Food security and quality crop production
+
+Remember: You have access to detailed user profiles. Use this information proactively to provide highly personalized farming guidance."""
 
     def _format_conversation_history(self, messages: List[ChatMessage]) -> List[Dict[str, str]]:
         """Format chat messages for GROQ API"""
@@ -114,46 +147,76 @@ class FarmingAIService:
 
     def _format_user_context(self, user_context: Dict) -> str:
         """Format comprehensive user context for personalized AI responses"""
-        # (This entire robust function is unchanged as it was already well-written)
         if not user_context or not isinstance(user_context, dict):
             return "No specific context available"
         
         context_parts = []
         
+        # ✅ ENHANCED: Handle BOTH simple profile format AND legacy format
         personal_info = user_context.get("personal_info", {})
         if isinstance(personal_info, dict) and personal_info.get("full_name"):
-            context_parts.append(f"Farmer: {personal_info['full_name']}")
+            context_parts.append(f"Farmer Name: {personal_info['full_name']}")
+            if personal_info.get("email"):
+                context_parts.append(f"Contact Email: {personal_info['email']}")
 
         farm_profile = user_context.get("farm_profile", {})
         if isinstance(farm_profile, dict):
-            location_info = farm_profile.get("location", {})
-            if isinstance(location_info, dict) and location_info.get("state") and location_info.get("district"):
-                context_parts.append(f"Location: {location_info['district']}, {location_info['state']}, India")
+            # ✅ FIXED: Handle simple string location (NEW format from user_profiles)
+            location = farm_profile.get("location")
+            if location and isinstance(location, str) and location.strip():
+                context_parts.append(f"Farm Location: {location}")
+            # Legacy format: nested location object
+            elif isinstance(location, dict) and location.get("state") and location.get("district"):
+                context_parts.append(f"Farm Location: {location['district']}, {location['state']}, India")
             
-            farm_details = farm_profile.get("farm_details", {})
-            if isinstance(farm_details, dict) and farm_details.get("total_area"):
-                context_parts.append(f"Farm Size: {farm_details['total_area']} acres")
+            # ✅ FIXED: Handle direct farm_size (NEW format)
+            farm_size = farm_profile.get("farm_size")
+            if farm_size and (isinstance(farm_size, (int, float)) or isinstance(farm_size, str)):
+                try:
+                    size_num = float(farm_size)
+                    if size_num > 0:
+                        context_parts.append(f"Farm Size: {size_num} acres")
+                except (ValueError, TypeError):
+                    pass
+            # Legacy format: nested farm_details
+            else:
+                farm_details = farm_profile.get("farm_details", {})
+                if isinstance(farm_details, dict) and farm_details.get("total_area"):
+                    context_parts.append(f"Farm Size: {farm_details['total_area']} acres")
 
-            soil_info = farm_profile.get("soil_information", {})
-            if isinstance(soil_info, dict) and soil_info.get("primary_soil_type"):
-                context_parts.append(f"Soil Type: {soil_info['primary_soil_type']}")
+            # ✅ FIXED: Handle direct soil_type (NEW format)
+            soil_type = farm_profile.get("soil_type")
+            if soil_type and isinstance(soil_type, str) and soil_type.strip():
+                context_parts.append(f"Soil Type: {soil_type}")
+            # Legacy format: nested soil_information
+            else:
+                soil_info = farm_profile.get("soil_information", {})
+                if isinstance(soil_info, dict) and soil_info.get("primary_soil_type"):
+                    context_parts.append(f"Soil Type: {soil_info['primary_soil_type']}")
 
-            irrigation = farm_profile.get("irrigation_system", {})
-            if isinstance(irrigation, dict) and irrigation.get("primary_method"):
-                context_parts.append(f"Irrigation: {irrigation['primary_method']}")
+            # ✅ FIXED: Handle direct irrigation_type (NEW format)
+            irrigation_type = farm_profile.get("irrigation_type")
+            if irrigation_type and isinstance(irrigation_type, str) and irrigation_type.strip():
+                context_parts.append(f"Irrigation System: {irrigation_type}")
+            # Legacy format: nested irrigation_system
+            else:
+                irrigation = farm_profile.get("irrigation_system", {})
+                if isinstance(irrigation, dict) and irrigation.get("primary_method"):
+                    context_parts.append(f"Irrigation System: {irrigation['primary_method']}")
 
+        # Legacy farming_profile (still supported)
         farming_profile = user_context.get("farming_profile", {})
         if isinstance(farming_profile, dict):
             if farming_profile.get("experience_level"):
-                context_parts.append(f"Experience: {farming_profile['experience_level']}")
+                context_parts.append(f"Farming Experience: {farming_profile['experience_level']}")
             if farming_profile.get("primary_crops"):
                 crops_list = farming_profile['primary_crops']
                 if isinstance(crops_list, list) and crops_list:
                     context_parts.append(f"Primary Crops: {', '.join(crops_list)}")
 
         if context_parts:
-            formatted_context = "USER PROFILE CONTEXT:\n" + "\n".join(f"• {part}" for part in context_parts)
-            formatted_context += "\n\nPERSONALIZATION INSTRUCTIONS:\n• Tailor advice to the user's specific context."
+            formatted_context = "🎯 IMPORTANT - USER PROFILE INFORMATION:\n" + "\n".join(f"• {part}" for part in context_parts)
+            formatted_context += "\n\n⚠️ CRITICAL INSTRUCTION:\nWhen the user asks about their farm details (name, location, size, soil, irrigation), YOU MUST respond with the SPECIFIC information listed above. DO NOT ask them to provide information you already have. Be confident and direct in sharing what you know about their farm."
             return formatted_context
         
         # Fallback for basic context

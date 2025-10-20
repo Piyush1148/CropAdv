@@ -121,15 +121,40 @@ async def send_message(
         enhanced_context = None
         ai_context_response = None
         
-        # This is the section that was previously failing
+        # ✅ ENHANCED: Fetch user profile from user_profiles collection for personalization
         try:
             print(f"🔍 Getting AI context for user: {user_id}")
-            # This call will now succeed because the function is implemented in firebase_service.py
-            ai_context_response = await firebase_service.get_ai_context_for_user(user_id)
             
-            if ai_context_response and ai_context_response.personalization_active:
-                enhanced_context = ai_context_response.user_context
-                print(f"🎯 Using enhanced AI context for user {user_id} (quality: {ai_context_response.context_quality_score}/10)")
+            # Fetch simple user profile from user_profiles collection (NEW!)
+            simple_profile = await firebase_service.get_simple_user_profile(user_id)
+            
+            if simple_profile:
+                print(f"✨ Found user profile in user_profiles collection")
+                # Build personalized context from simple profile
+                enhanced_context = {
+                    "personal_info": {
+                        "full_name": simple_profile.get("full_name", "Farmer"),
+                        "email": simple_profile.get("email", ""),
+                        "phone_number": simple_profile.get("phone_number", "")
+                    },
+                    "farm_profile": {
+                        "location": simple_profile.get("location", ""),
+                        "farm_size": simple_profile.get("farm_size"),
+                        "soil_type": simple_profile.get("soil_type"),
+                        "irrigation_type": simple_profile.get("irrigation_type")
+                    },
+                    "profile_complete": simple_profile.get("profile_complete", False),
+                    "created_at": simple_profile.get("created_at")
+                }
+                print(f"🎯 Using personalized context from user_profiles: {simple_profile.get('full_name')} at {simple_profile.get('location')}")
+            else:
+                # Try to get from old AI context system (fallback)
+                print(f"⚠️ No simple profile found, trying legacy AI context...")
+                ai_context_response = await firebase_service.get_ai_context_for_user(user_id)
+                
+                if ai_context_response and ai_context_response.personalization_active:
+                    enhanced_context = ai_context_response.user_context
+                    print(f"🎯 Using legacy enhanced AI context for user {user_id} (quality: {ai_context_response.context_quality_score}/10)")
         except Exception as context_error:
             print(f"⚠️ Could not get enhanced context for user {user_id}: {str(context_error)}")
             import traceback

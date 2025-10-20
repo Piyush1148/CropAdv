@@ -7,6 +7,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { marked } from 'marked';
 import { useChatFirestore as useChat } from '../../hooks/useChatFirestore';
+import { useUserProfile } from '../../hooks/useUserProfile';
 import AuthContext from '../../context/AuthContext';
 
 // Theme colors matching the main application
@@ -455,6 +456,9 @@ const TypingIndicator = styled.div`
 const ThemedAIAssistant = () => {
   // Component renders normally - logging removed to prevent console spam
 
+  // ✅ NEW: Fetch user profile for personalized AI context
+  const { profile, profileComplete, getAIContext } = useUserProfile();
+
   const {
     messages,
     isLoading,
@@ -474,7 +478,7 @@ const ThemedAIAssistant = () => {
 
   const [connectionStatus, setConnectionStatus] = useState('Testing...');
 
-  // Test backend connection on component mount
+  // Test backend connection and show profile status on component mount
   useEffect(() => {
     const testBackendConnection = async () => {
       try {
@@ -486,6 +490,16 @@ const ThemedAIAssistant = () => {
           const data = await response.json();
           console.log('🔍 Health check data:', data);
           setConnectionStatus('✅ Backend Connected');
+          
+          // ✅ NEW: Log profile status for personalization
+          if (profile) {
+            const aiContext = getAIContext();
+            console.log('🎯 AI Personalization Active:', {
+              name: profile.full_name,
+              complete: profileComplete,
+              context: aiContext
+            });
+          }
         } else {
           setConnectionStatus(`❌ Backend Error: ${response.status}`);
         }
@@ -496,7 +510,7 @@ const ThemedAIAssistant = () => {
     };
 
     testBackendConnection();
-  }, []);
+  }, [profile, profileComplete, getAIContext]);
 
   const [inputMessage, setInputMessage] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState(null);

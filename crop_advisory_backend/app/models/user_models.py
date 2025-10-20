@@ -861,3 +861,87 @@ class AIContextResponse(BaseModel):
     personalization_active: bool
     context_quality_score: Optional[float] = None
     last_updated: datetime
+
+
+# ==================== SIMPLE REGISTRATION MODELS ====================
+# Lightweight models for basic user_profiles collection during registration
+
+class SimpleUserProfileCreate(BaseModel):
+    """Minimal profile data collected during registration"""
+    full_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=100,
+        description="User's full name"
+    )
+    email: str = Field(
+        ...,
+        description="User's email address"
+    )
+    phone_number: Optional[str] = Field(
+        None,
+        description="User's phone number"
+    )
+    location: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=200,
+        description="User's location (e.g., Mumbai, Maharashtra)"
+    )
+    farm_size: Optional[float] = Field(
+        None,
+        ge=0.01,
+        le=10000,
+        description="Farm size in acres"
+    )
+    soil_type: Optional[str] = Field(
+        None,
+        description="Primary soil type"
+    )
+    irrigation_type: Optional[str] = Field(
+        None,
+        description="Primary irrigation method"
+    )
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "full_name": "Piyush Kumar",
+                "email": "piyush@example.com",
+                "phone_number": "+91 9876543210",
+                "location": "Mumbai, Maharashtra",
+                "farm_size": 5.5,
+                "soil_type": "Clay Loam",
+                "irrigation_type": "Drip Irrigation"
+            }
+        }
+
+
+class SimpleUserProfileResponse(BaseModel):
+    """Response model for user profile operations"""
+    uid: str
+    full_name: str
+    email: str
+    phone_number: Optional[str] = None
+    location: Optional[str] = None
+    farm_size: Optional[float] = None
+    soil_type: Optional[str] = None
+    irrigation_type: Optional[str] = None
+    created_at: Optional[datetime] = None
+    profile_complete: bool = False
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "uid": "abc123xyz",
+                "full_name": "Piyush Kumar",
+                "email": "piyush@example.com",
+                "phone_number": "+91 9876543210",
+                "location": "Mumbai, Maharashtra",
+                "farm_size": 5.5,
+                "soil_type": "Clay Loam",
+                "irrigation_type": "Drip Irrigation",
+                "created_at": "2025-10-20T10:30:00",
+                "profile_complete": True
+            }
+        }

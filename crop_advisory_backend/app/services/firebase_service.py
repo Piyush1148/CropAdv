@@ -219,6 +219,136 @@ class FirebaseService:
         # (This is a stub, actual implementation would be here)
         return True
 
+    # ==================== USER_PROFILES COLLECTION MANAGEMENT ====================
+    # New lightweight collection for signup information to personalize AI Assistant
+
+    async def create_simple_user_profile(self, uid: str, profile_data: Dict[str, Any]) -> bool:
+        """
+        Create user profile in user_profiles collection during registration.
+        This is separate from the 'users' collection and stores signup form data.
+        
+        Args:
+            uid: Firebase Auth user ID
+            profile_data: Dict containing fullName, email, phoneNumber, location, 
+                         farmSize, soilType, irrigationType
+        
+        Returns:
+            bool: True if profile created successfully, False otherwise
+        """
+        if not self.db:
+            print("❌ Firebase not connected")
+            return False
+        
+        try:
+            # Build profile document with timestamp
+            profile_doc = {
+                "uid": uid,
+                "full_name": profile_data.get("full_name", ""),
+                "email": profile_data.get("email", ""),
+                "phone_number": profile_data.get("phone_number"),
+                "location": profile_data.get("location"),
+                "farm_size": profile_data.get("farm_size"),
+                "soil_type": profile_data.get("soil_type"),
+                "irrigation_type": profile_data.get("irrigation_type"),
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "profile_complete": self._check_profile_completion(profile_data)
+            }
+            
+            # Store in user_profiles collection
+            self.db.collection("user_profiles").document(uid).set(profile_doc)
+            print(f"✅ User profile created in user_profiles collection for UID: {uid}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error creating user profile in user_profiles collection: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    async def get_simple_user_profile(self, uid: str) -> Optional[Dict[str, Any]]:
+        """
+        Get user profile from user_profiles collection.
+        
+        Args:
+            uid: Firebase Auth user ID
+        
+        Returns:
+            Dict containing profile data or None if not found
+        """
+        if not self.db:
+            print("❌ Firebase not connected")
+            return None
+        
+        try:
+            doc = self.db.collection("user_profiles").document(uid).get()
+            
+            if doc.exists:
+                profile = doc.to_dict()
+                print(f"✅ Retrieved user profile from user_profiles collection for {uid}")
+                return profile
+            else:
+                print(f"⚠️ No profile found in user_profiles collection for user {uid}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error getting user profile from user_profiles collection: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    async def update_simple_user_profile(self, uid: str, update_data: Dict[str, Any]) -> bool:
+        """
+        Update user profile in user_profiles collection.
+        
+        Args:
+            uid: Firebase Auth user ID
+            update_data: Dict containing fields to update
+        
+        Returns:
+            bool: True if updated successfully, False otherwise
+        """
+        if not self.db:
+            print("❌ Firebase not connected")
+            return False
+        
+        try:
+            # Add updated timestamp
+            update_data["updated_at"] = datetime.utcnow()
+            
+            # Update profile completion status
+            update_data["profile_complete"] = self._check_profile_completion(update_data)
+            
+            # Update document
+            self.db.collection("user_profiles").document(uid).update(update_data)
+            print(f"✅ User profile updated in user_profiles collection for UID: {uid}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error updating user profile in user_profiles collection: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def _check_profile_completion(self, profile_data: Dict[str, Any]) -> bool:
+        """
+        Check if user profile has all optional fields filled.
+        
+        Args:
+            profile_data: Profile data dictionary
+        
+        Returns:
+            bool: True if location, farmSize, soilType, and irrigationType are all provided
+        """
+        required_for_complete = ["location", "farm_size", "soil_type", "irrigation_type"]
+        return all(
+            profile_data.get(field) is not None and 
+            str(profile_data.get(field)).strip() != "" 
+            for field in required_for_complete
+        )
+
+    # ==================== EXISTING METHODS CONTINUE ====================
+
     async def update_ai_interaction_history(self, user_id: str, interaction_data: Dict[str, Any]):
         """Updates AI interaction history for a user."""
         # (This is a stub, actual implementation would be here)
