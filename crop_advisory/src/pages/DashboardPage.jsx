@@ -33,6 +33,7 @@ import Button from '../components/common/Button';
 import Loading from '../components/common/Loading';
 import { useAuth } from '../context/AuthContext';
 import { usePredictionHistory, useDashboardStats, useApiHealth } from '../hooks/useApi';
+import eventBus, { EVENTS } from '../utils/eventBus';
 import {
   useCurrentWeather,
   useAgriculturalInsights,
@@ -316,8 +317,8 @@ const DashboardPage = () => {
   const { user, isLoading } = useAuth();
   const [weatherData, setWeatherData] = useState(null);
   
-  // Use our custom API hooks
-  const { history: predictionHistory, isLoading: historyLoading, refetch: refetchHistory } = usePredictionHistory(4);
+  // Use our custom API hooks - increased limit to show all predictions
+  const { history: predictionHistory, isLoading: historyLoading, refetch: refetchHistory } = usePredictionHistory(50);
   const { stats: dashboardStats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { isHealthy } = useApiHealth();
 
@@ -352,47 +353,75 @@ const DashboardPage = () => {
     refetch: refetchForecast 
   } = useWeatherForecast(currentLocation?.latitude, currentLocation?.longitude);
   
-  // Manual refresh on component mount (when navigating back to dashboard)
+  // ✅ Note: No manual refetch on mount needed - useDashboardStats and usePredictionHistory
+  // already auto-fetch when component mounts, preventing duplicate API calls
+  
+  // ✅ FIX: Listen for new predictions and auto-refresh dashboard
   useEffect(() => {
-    console.log('📊 [DashboardPage] Component mounted, refreshing data...');
-    refetchStats();
-    refetchHistory();
-  }, []);  // Empty dependency array means this runs once on mount
-
-  // Debug current dashboard stats
-  useEffect(() => {
-    console.log('📊 [DashboardPage] Dashboard stats updated:', {
-      dashboardStats,
-      totalPredictions: dashboardStats?.user_stats?.total_predictions,
-      predictionHistoryLength: predictionHistory?.length
+    // Listen to eventBus for prediction events
+    const unsubscribe = eventBus.on(EVENTS.PREDICTION_CREATED, () => {
+      if (import.meta.env.DEV) {
+        console.log('� New prediction detected, refreshing dashboard...');
+      }
+      refetchStats();
+      refetchHistory();
     });
-  }, [dashboardStats, predictionHistory]);
+
+    // Cleanup listener on unmount
+    return () => {
+      unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array - listener set up once on mount
 
   // Update location when user location is obtained
+  // NOTE: Using empty dependency array to prevent re-render loops
   useEffect(() => {
     if (userLocation) {
       setCurrentLocation({
         latitude: userLocation.latitude,
         longitude: userLocation.longitude
       });
+      // Refetch weather with new location
+      refetchWeather();
+      refetchForecast();
+      refetchInsights();
     }
-  }, [userLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation]); // Only depend on userLocation changes
+
+  // Retry weather fetch if it initially fails
+  // NOTE: Fixed dependency array to prevent infinite loops
+  useEffect(() => {
+    if (weatherError && currentLocation) {
+      // Retry after 3 seconds if there's an error
+      const retryTimer = setTimeout(() => {
+        if (import.meta.env.DEV) {
+          console.log('🔄 Retrying weather fetch...');
+        }
+        refetchWeather();
+      }, 3000);
+      
+      return () => clearTimeout(retryTimer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherError]); // Only retry when weatherError changes
 
   // Simulate weather data fetch (fallback for existing weather display)
+  // NOTE: Optimized to only update when currentWeather actually changes
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (currentWeather) {
+      // Update immediately without delay for better UX
       setWeatherData({
-        temperature: currentWeather?.temperature || 24,
-        humidity: currentWeather?.humidity || 65,
-        windSpeed: currentWeather?.wind_speed || 12,
+        temperature: currentWeather.temperature || 24,
+        humidity: currentWeather.humidity || 65,
+        windSpeed: currentWeather.wind_speed || 12,
         uvIndex: 6,
         precipitation: 0.2,
-        description: currentWeather?.condition?.replace('_', ' ') || 'Partly Cloudy',
+        description: currentWeather.condition?.replace('_', ' ') || 'Partly Cloudy',
       });
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [currentWeather]);
+    }
+  }, [currentWeather]); // Only update when currentWeather changes
 
   // Handle location request
   const handleGetLocation = async () => {
@@ -405,12 +434,15 @@ const DashboardPage = () => {
 
   // Refresh all weather data
   const handleRefreshWeather = () => {
+    if (import.meta.env.DEV) {
+      console.log('🔄 Manual weather refresh triggered');
+    }
     refetchWeather();
-    refetchInsights();
     refetchForecast();
+    refetchInsights();
   };
 
-  // Generate stats from real API data
+  // Simulate weather data fetch (fallback for existing weather display)  // Generate stats from real API data
   const stats = [
     {
       label: 'Total Predictions',
@@ -440,9 +472,10 @@ const DashboardPage = () => {
       label: 'Top Crop',
       value: dashboardStats?.recent_activity?.most_recent_crops?.[0] || 
         dashboardStats?.topCrops?.[0] || 
+        predictionHistory?.[0]?.crop_name ||
         (typeof predictionHistory?.[0]?.prediction === 'string' 
           ? predictionHistory[0].prediction 
-          : predictionHistory?.[0]?.prediction?.crop || predictionHistory?.[0]?.crop) || 'None yet',
+          : predictionHistory?.[0]?.prediction?.crop_name || predictionHistory?.[0]?.prediction?.crop || predictionHistory?.[0]?.crop) || 'None yet',
       change: 'Based on predictions',
       positive: true,
       icon: <Leaf />,
@@ -453,9 +486,13 @@ const DashboardPage = () => {
   // Generate activities from real prediction history
   const recentActivities = predictionHistory?.length ? 
     predictionHistory.slice(0, 4).map((prediction, index) => {
-      const cropName = typeof prediction.prediction === 'string' 
-        ? prediction.prediction 
-        : prediction.prediction?.crop || prediction.crop || 'Unknown crop';
+      // ✅ FIX: Check crop_name first (standardized by backend), then fallback to other formats
+      const cropName = prediction.crop_name 
+        || (typeof prediction.prediction === 'string' ? prediction.prediction : null)
+        || prediction.prediction?.crop_name
+        || prediction.prediction?.crop 
+        || prediction.crop 
+        || 'Unknown crop';
       const confidence = prediction.confidence || prediction.prediction?.confidence || prediction.probability || 95;
       const confidencePercent = confidence > 1 ? confidence : confidence * 100;
       

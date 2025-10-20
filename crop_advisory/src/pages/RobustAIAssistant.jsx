@@ -7,7 +7,7 @@ import ThemedAIAssistant from '../components/chat/ThemedAIAssistant';
 import ErrorBoundary from '../components/debug/ErrorBoundary';
 
 const RobustAIAssistant = () => {
-  console.log('🎯 RobustAIAssistant page rendering...');
+  // Component renders normally - logging removed to prevent console spam
 
   return (
     <ErrorBoundary>

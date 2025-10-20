@@ -204,8 +204,11 @@ class OpenWeatherMapService:
         except (KeyError, ValueError):
             weather_condition = WeatherCondition.CLEAR
         
+        # ✅ FIX: Use API name if location_name is "Unknown" or empty
+        actual_location = data.get('name', 'Unknown') if (not location_name or location_name == "Unknown") else location_name
+        
         return CurrentWeather(
-            location=location_name or data.get('name', 'Unknown'),
+            location=actual_location,
             latitude=data['coord']['lat'],
             longitude=data['coord']['lon'],
             condition=weather_condition,
@@ -261,8 +264,11 @@ class OpenWeatherMapService:
             )
             forecast_items.append(forecast_item)
         
+        # ✅ FIX: Use API name if location_name is "Unknown" or empty
+        actual_location = data['city']['name'] if (not location_name or location_name == "Unknown") else location_name
+        
         return WeatherForecast(
-            location=location_name or data['city']['name'],
+            location=actual_location,
             latitude=data['city']['coord']['lat'],
             longitude=data['city']['coord']['lon'],
             forecast=forecast_items,

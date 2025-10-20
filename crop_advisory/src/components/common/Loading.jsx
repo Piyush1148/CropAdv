@@ -25,7 +25,7 @@ const LoadingContainer = styled.div`
   gap: ${theme.spacing[4]};
   padding: ${theme.spacing[8]};
   
-  ${props => props.fullScreen && `
+  ${props => props.$fullScreen && `
     position: fixed;
     top: 0;
     left: 0;
@@ -36,7 +36,7 @@ const LoadingContainer = styled.div`
     z-index: ${theme.zIndex.modal};
   `}
   
-  ${props => props.overlay && `
+  ${props => props.$overlay && `
     position: absolute;
     top: 0;
     left: 0;
@@ -55,7 +55,7 @@ const SpinnerContainer = styled.div`
 
 const Spinner = styled.div`
   width: ${props => {
-    switch (props.size) {
+    switch (props.$size) {
       case 'sm': return '1rem';
       case 'lg': return '2.5rem';
       case 'xl': return '3rem';
@@ -63,7 +63,7 @@ const Spinner = styled.div`
     }
   }};
   height: ${props => {
-    switch (props.size) {
+    switch (props.$size) {
       case 'sm': return '1rem';
       case 'lg': return '2.5rem';
       case 'xl': return '3rem';
@@ -87,7 +87,7 @@ const Dot = styled.div`
   background-color: ${theme.colors.primary[600]};
   border-radius: 50%;
   animation: ${bounce} 1.4s infinite ease-in-out;
-  animation-delay: ${props => props.delay || '0s'};
+  animation-delay: ${props => props.$delay || '0s'};
 `;
 
 const PulseContainer = styled.div`
@@ -98,7 +98,7 @@ const PulseContainer = styled.div`
 const PulseBar = styled.div`
   width: 4px;
   height: ${props => {
-    switch (props.size) {
+    switch (props.$size) {
       case 'sm': return '1rem';
       case 'lg': return '2rem';
       default: return '1.5rem';
@@ -107,7 +107,7 @@ const PulseBar = styled.div`
   background-color: ${theme.colors.primary[600]};
   border-radius: 2px;
   animation: ${pulse} 1.2s infinite ease-in-out;
-  animation-delay: ${props => props.delay || '0s'};
+  animation-delay: ${props => props.$delay || '0s'};
 `;
 
 const LoadingText = styled.p`
@@ -117,7 +117,7 @@ const LoadingText = styled.p`
   text-align: center;
   margin-top: ${theme.spacing[2]};
   
-  ${props => props.size === 'lg' && `
+  ${props => props.$size === 'lg' && `
     font-size: ${theme.typography.fontSize.base};
   `}
 `;
@@ -137,7 +137,7 @@ const ProgressFill = styled.div`
   background: linear-gradient(90deg, ${theme.colors.primary[500]}, ${theme.colors.primary[600]});
   border-radius: ${theme.borderRadius.full};
   transition: width 0.3s ease;
-  width: ${props => props.progress || 0}%;
+  width: ${props => props.$progress || 0}%;
 `;
 
 const StepIndicator = styled.div`
@@ -154,11 +154,11 @@ const Step = styled.div`
   color: ${theme.colors.text.secondary};
   font-size: ${theme.typography.fontSize.sm};
   
-  ${props => props.active && `
+  ${props => props.$active && `
     color: ${theme.colors.primary[600]};
   `}
   
-  ${props => props.completed && `
+  ${props => props.$completed && `
     color: ${theme.colors.success};
   `}
 `;
@@ -173,17 +173,17 @@ const StepIcon = styled.div`
   font-size: ${theme.typography.fontSize.xs};
   font-weight: ${theme.typography.fontWeight.semibold};
   
-  ${props => props.active && `
+  ${props => props.$active && `
     background-color: ${theme.colors.primary[100]};
     color: ${theme.colors.primary[700]};
   `}
   
-  ${props => props.completed && `
+  ${props => props.$completed && `
     background-color: ${theme.colors.success};
     color: white;
   `}
   
-  ${props => !props.active && !props.completed && `
+  ${props => !props.$active && !props.$completed && `
     background-color: ${theme.colors.border.light};
     color: ${theme.colors.text.tertiary};
   `}
@@ -203,30 +203,30 @@ const Loading = ({
 }) => {
   const renderSpinner = () => (
     <SpinnerContainer>
-      <Spinner size={size} />
+      <Spinner $size={size} />
     </SpinnerContainer>
   );
 
   const renderDots = () => (
     <DotsContainer>
-      <Dot delay="0s" />
-      <Dot delay="0.16s" />
-      <Dot delay="0.32s" />
+      <Dot $delay="0s" />
+      <Dot $delay="0.16s" />
+      <Dot $delay="0.32s" />
     </DotsContainer>
   );
 
   const renderPulse = () => (
     <PulseContainer>
-      <PulseBar size={size} delay="0s" />
-      <PulseBar size={size} delay="0.1s" />
-      <PulseBar size={size} delay="0.2s" />
-      <PulseBar size={size} delay="0.3s" />
+      <PulseBar $size={size} $delay="0s" />
+      <PulseBar $size={size} $delay="0.1s" />
+      <PulseBar $size={size} $delay="0.2s" />
+      <PulseBar $size={size} $delay="0.3s" />
     </PulseContainer>
   );
 
   const renderProgress = () => (
     <ProgressBar>
-      <ProgressFill progress={progress} />
+      <ProgressFill $progress={progress} />
     </ProgressBar>
   );
 
@@ -235,12 +235,12 @@ const Loading = ({
       {steps?.map((step, index) => (
         <Step
           key={index}
-          active={index === currentStep}
-          completed={index < currentStep}
+          $active={index === currentStep}
+          $completed={index < currentStep}
         >
           <StepIcon
-            active={index === currentStep}
-            completed={index < currentStep}
+            $active={index === currentStep}
+            $completed={index < currentStep}
           >
             {index < currentStep ? '✓' : index + 1}
           </StepIcon>
@@ -252,8 +252,8 @@ const Loading = ({
 
   return (
     <LoadingContainer
-      fullScreen={fullScreen}
-      overlay={overlay}
+      $fullScreen={fullScreen}
+      $overlay={overlay}
       className={className}
       {...props}
     >
@@ -262,7 +262,7 @@ const Loading = ({
       {variant === 'pulse' && renderPulse()}
       
       {text && (
-        <LoadingText size={size}>
+        <LoadingText $size={size}>
           {text}
         </LoadingText>
       )}
@@ -273,16 +273,15 @@ const Loading = ({
   );
 };
 
-// Individual loading components for specific use cases
 export const LoadingSpinner = ({ size = 'md', ...props }) => (
-  <Spinner size={size} {...props} />
+  <Spinner $size={size} {...props} />
 );
 
 export const LoadingDots = ({ ...props }) => (
   <DotsContainer {...props}>
-    <Dot delay="0s" />
-    <Dot delay="0.16s" />
-    <Dot delay="0.32s" />
+    <Dot $delay="0s" />
+    <Dot $delay="0.16s" />
+    <Dot $delay="0.32s" />
   </DotsContainer>
 );
 
@@ -293,7 +292,7 @@ export const LoadingOverlay = ({ children, loading, ...props }) => (
       <Loading
         variant="spinner"
         text="Loading..."
-        overlay
+        overlay // This prop is passed to Loading, which handles it as $overlay
         {...props}
       />
     )}

@@ -28,30 +28,33 @@ export const useCropPrediction = () => {
         setPrediction(result);
         
         // Emit event to trigger dashboard refresh
-        console.log('✅ [useCropPrediction] Prediction successful:', result);
-        console.log('📡 [useCropPrediction] Emitting PREDICTION_CREATED event...');
+        if (import.meta.env.DEV) {
+          console.log('✅ Prediction successful:', result);
+          console.log('📡 Emitting PREDICTION_CREATED event...');
+        }
         eventBus.emit(EVENTS.PREDICTION_CREATED, result);
-        console.log('📡 [useCropPrediction] Event emitted successfully');
         
         // Also emit a window event as backup
         window.dispatchEvent(new CustomEvent('predictionCreated', { 
           detail: result 
         }));
-        console.log('📡 [useCropPrediction] Window event dispatched');
         
         // Set localStorage trigger for dashboard refresh
         localStorage.setItem('dashboardRefreshTrigger', Date.now().toString());
-        console.log('📡 [useCropPrediction] LocalStorage refresh trigger set');
         
         return result;
       } else {
-        console.error('❌ [useCropPrediction] Invalid prediction response:', result);
+        if (import.meta.env.DEV) {
+          console.error('❌ Invalid prediction response:', result);
+        }
         throw new Error('Invalid prediction response');
       }
     } catch (err) {
       const errorMessage = err.message || 'Failed to get crop prediction';
       setError(errorMessage);
-      console.error('Crop prediction error:', err);
+      if (import.meta.env.DEV) {
+        console.error('Crop prediction error:', err);
+      }
       throw err;
     } finally {
       setIsLoading(false);
@@ -97,7 +100,9 @@ export const usePredictionHistory = (limit = 10) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to load prediction history';
       setError(errorMessage);
-      console.error('History fetch error:', err);
+      if (import.meta.env.DEV) {
+        console.error('History fetch error:', err);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +115,9 @@ export const usePredictionHistory = (limit = 10) => {
   // Listen for prediction events to refresh history
   useEffect(() => {
     const unsubscribe = eventBus.on(EVENTS.PREDICTION_CREATED, () => {
-      console.log('🔄 Prediction history refreshing after new prediction');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Prediction history refreshing after new prediction');
+      }
       fetchHistory();
     });
 
@@ -227,19 +234,9 @@ export const useDashboardStats = () => {
     fetchStats();
   }, [fetchStats]);
 
-  // Auto-refresh on window focus (when user switches back to dashboard)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isAuthenticated) {
-        console.log('🔄 [useDashboardStats] Window focused, refreshing stats...');
-        fetchStats();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchStats, isAuthenticated]);
-
+  // NOTE: Window focus auto-refresh DISABLED to prevent annoying reloads
+  // User can manually refresh using the refresh button if needed
+  
   // Listen for window custom events as backup refresh trigger
   useEffect(() => {
     const handlePredictionCreated = (event) => {
@@ -289,16 +286,17 @@ export const useDashboardStats = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [fetchStats]);
 
-  // Periodic refresh every 30 seconds when document is visible
+  // Periodic refresh every 5 minutes when document is visible
+  // This prevents excessive API calls while keeping data reasonably fresh
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        console.log('🔄 [useDashboardStats] Periodic refresh (30s interval)');
+        console.log('🔄 [useDashboardStats] Periodic refresh (5 min interval)');
         fetchStats();
       }
-    }, 30000); // Refresh every 30 seconds
+    }, 300000); // Refresh every 5 minutes (300,000 ms)
 
     return () => clearInterval(interval);
   }, [fetchStats, isAuthenticated]);

@@ -5,21 +5,13 @@
 
 import axios from 'axios';
 import { auth } from './authService';
-
-// API Configuration
-const API_CONFIG = {
-  BASE_URL: 'http://localhost:8000/api',
-  TIMEOUT: 10000,
-  RETRY_ATTEMPTS: 3,
-};
+import API_CONFIG from '../config/api';
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: API_CONFIG.BASE_URL,
+  baseURL: `${API_CONFIG.BASE_URL}/api`, // Add /api prefix for regular endpoints
   timeout: API_CONFIG.TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: API_CONFIG.HEADERS,
 });
 
 // Request interceptor to add authentication token

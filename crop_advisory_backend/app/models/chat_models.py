@@ -18,7 +18,7 @@ class ChatMessage(BaseModel):
     """Individual chat message model"""
     id: str = Field(..., description="Unique message ID")
     role: MessageRole = Field(..., description="Message sender role")
-    content: str = Field(..., min_length=1, max_length=2000, description="Message content")
+    content: str = Field(..., min_length=1, max_length=10000, description="Message content")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Message timestamp")
     metadata: Optional[Dict[str, Any]] = Field(default={}, description="Additional message metadata")
     

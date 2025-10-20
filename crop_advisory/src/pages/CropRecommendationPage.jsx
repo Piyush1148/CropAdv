@@ -260,7 +260,21 @@ const CropRecommendationPage = () => {
         <HistorySection>
           <SectionTitle>Recent Predictions</SectionTitle>
           <HistoryGrid>
-            {history.map((prediction, index) => (
+            {history.map((prediction, index) => {
+              // ✅ DEBUG: Log prediction structure
+              if (import.meta.env.DEV && index === 0) {
+                console.log('🔍 First prediction structure:', prediction);
+                console.log('🔍 Checking fields:', {
+                  crop_name: prediction.crop_name,
+                  prediction_string: typeof prediction.prediction === 'string' ? prediction.prediction : null,
+                  prediction_obj: typeof prediction.prediction === 'object' ? prediction.prediction : null,
+                  prediction_crop: prediction.prediction?.crop,
+                  prediction_crop_name: prediction.prediction?.crop_name,
+                  prediction_prediction: prediction.prediction?.prediction
+                });
+              }
+              
+              return (
               <motion.div
                 key={prediction.id || index}
                 initial={{ opacity: 0, y: 20 }}
@@ -270,9 +284,11 @@ const CropRecommendationPage = () => {
                 <HistoryCard>
                   <HistoryHeader>
                     <CropName>
-                      {typeof prediction.prediction === 'string' 
+                      {/* ✅ FIX: Check crop_name first (standardized by backend) */}
+                      {prediction.crop_name ||
+                       (typeof prediction.prediction === 'string' 
                         ? prediction.prediction 
-                        : prediction.prediction?.crop || prediction.crop || 'Unknown'}
+                        : prediction.prediction?.crop_name || prediction.prediction?.prediction || prediction.prediction?.crop || prediction.crop || 'Unknown')}
                     </CropName>
                     <HistoryDate>
                       {prediction.created_at ? new Date(prediction.created_at).toLocaleDateString() : 'Recent'}
@@ -295,7 +311,8 @@ const CropRecommendationPage = () => {
                   )}
                 </HistoryCard>
               </motion.div>
-            ))}
+              );
+            })}
           </HistoryGrid>
         </HistorySection>
       )}

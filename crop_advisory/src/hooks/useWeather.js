@@ -64,17 +64,33 @@ export const useCurrentWeather = (latitude, longitude, location = null) => {
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const fetchWeather = useCallback(async () => {
-    if (latitude == null || longitude == null) return;
+    if (latitude == null || longitude == null) {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Weather fetch skipped: no coordinates', { latitude, longitude });
+      }
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
+      if (import.meta.env.DEV) {
+        console.log('🌤️ Fetching weather:', { latitude, longitude, location });
+      }
       const data = await weatherService.getCurrentWeather(latitude, longitude, location);
+      if (import.meta.env.DEV) {
+        console.log('✅ Weather data received:', data);
+      }
       setWeather(data);
       setLastUpdated(new Date());
+      setError(null); // Clear any previous errors
     } catch (err) {
-      setError(err.message || 'Failed to fetch weather data');
+      const errorMessage = err.message || 'Failed to fetch weather data';
+      if (import.meta.env.DEV) {
+        console.error('❌ Weather fetch error:', err);
+      }
+      setError(errorMessage);
       setWeather(null);
     } finally {
       setIsLoading(false);

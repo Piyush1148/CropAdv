@@ -28,26 +28,26 @@ const ButtonStyled = styled.button`
   }
   
   /* Size Variants */
-  ${props => props.size === 'sm' && `
+  ${props => props.$size === 'sm' && `
     padding: ${theme.spacing[2]} ${theme.spacing[3]};
     font-size: ${theme.typography.fontSize.sm};
     line-height: ${theme.typography.lineHeight.tight};
   `}
   
-  ${props => props.size === 'md' && `
+  ${props => props.$size === 'md' && `
     padding: ${theme.spacing[3]} ${theme.spacing[5]};
     font-size: ${theme.typography.fontSize.sm};
     line-height: ${theme.typography.lineHeight.normal};
   `}
   
-  ${props => props.size === 'lg' && `
+  ${props => props.$size === 'lg' && `
     padding: ${theme.spacing[4]} ${theme.spacing[6]};
     font-size: ${theme.typography.fontSize.base};
     line-height: ${theme.typography.lineHeight.normal};
   `}
   
   /* Variant Styles */
-  ${props => props.variant === 'primary' && `
+  ${props => props.$variant === 'primary' && `
     background-color: ${theme.colors.primary[600]};
     color: ${theme.colors.text.inverse};
     border-color: ${theme.colors.primary[600]};
@@ -65,7 +65,7 @@ const ButtonStyled = styled.button`
     }
   `}
   
-  ${props => props.variant === 'secondary' && `
+  ${props => props.$variant === 'secondary' && `
     background-color: ${theme.colors.background.primary};
     color: ${theme.colors.text.primary};
     border-color: ${theme.colors.border.medium};
@@ -76,7 +76,7 @@ const ButtonStyled = styled.button`
     }
   `}
   
-  ${props => props.variant === 'outline' && `
+  ${props => props.$variant === 'outline' && `
     background-color: transparent;
     color: ${theme.colors.primary[600]};
     border-color: ${theme.colors.primary[600]};
@@ -87,7 +87,7 @@ const ButtonStyled = styled.button`
     }
   `}
   
-  ${props => props.variant === 'ghost' && `
+  ${props => props.$variant === 'ghost' && `
     background-color: transparent;
     color: ${theme.colors.text.secondary};
     border-color: transparent;
@@ -98,7 +98,7 @@ const ButtonStyled = styled.button`
     }
   `}
   
-  ${props => props.variant === 'danger' && `
+  ${props => props.$variant === 'danger' && `
     background-color: ${theme.colors.error};
     color: ${theme.colors.text.inverse};
     border-color: ${theme.colors.error};
@@ -112,7 +112,7 @@ const ButtonStyled = styled.button`
   `}
   
   /* Loading State */
-  ${props => props.loading && `
+  ${props => props.$loading && `
     pointer-events: none;
     position: relative;
     color: transparent;
@@ -126,7 +126,7 @@ const ButtonStyled = styled.button`
       border-top: 2px solid transparent;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      color: ${props.variant === 'outline' || props.variant === 'ghost' 
+      color: ${props.$variant === 'outline' || props.$variant === 'ghost' 
         ? theme.colors.primary[600] 
         : theme.colors.text.inverse
       };
@@ -139,7 +139,7 @@ const ButtonStyled = styled.button`
   `}
   
   /* Full Width */
-  ${props => props.fullWidth && `
+  ${props => props.$fullWidth && `
     width: 100%;
   `}
 `;
@@ -160,11 +160,11 @@ const Button = ({
 }) => {
   return (
     <ButtonStyled
-      variant={variant}
-      size={size}
-      loading={loading}
+      $variant={variant}
+      $size={size}
+      $loading={loading}
       disabled={disabled || loading}
-      fullWidth={fullWidth}
+      $fullWidth={fullWidth}
       onClick={onClick}
       type={type}
       className={className}

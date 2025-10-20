@@ -197,7 +197,9 @@ export const AuthProvider = ({ children }) => {
             displayName: userData.name,
             fullName: userData.name
           });
-          console.log('✅ User registered in backend successfully');
+          if (import.meta.env.DEV) {
+            console.log('✅ User registered in backend successfully');
+          }
           
           // CRITICAL: Also create enhanced profile with complete signup data
           try {
@@ -212,7 +214,9 @@ export const AuthProvider = ({ children }) => {
                 irrigationType: userData.irrigationType
               }
             });
-            console.log('✅ Enhanced profile created from signup data using public endpoint');
+            if (import.meta.env.DEV) {
+              console.log('✅ Enhanced profile created from signup data using public endpoint');
+            }
           } catch (profileError) {
             console.error('❌ Enhanced profile creation failed:', profileError);
             // This is critical - we need the full profile for AI personalization

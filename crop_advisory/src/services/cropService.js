@@ -58,27 +58,33 @@ export const cropService = {
         location: soilData.location.trim()
       };
 
-      console.log('🌱 Sending prediction request:', formattedData);
-      console.log('🔑 API Client base URL:', apiClient.defaults.baseURL);
+      if (import.meta.env.DEV) {
+        console.log('🌱 Sending prediction request:', formattedData);
+        console.log('🔑 API Client base URL:', apiClient.defaults.baseURL);
+      }
 
       // Make API call to backend
       const response = await apiClient.post('/crops/predict', formattedData);
-      console.log('✅ Prediction response received:', response.data);
+      if (import.meta.env.DEV) {
+        console.log('✅ Prediction response received:', response.data);
+      }
 
       return handleApiResponse(response);
 
     } catch (error) {
       console.error('❌ Crop prediction failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        status: error.status,
-        response: error.response?.data,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          baseURL: error.config?.baseURL
-        }
-      });
+      if (import.meta.env.DEV) {
+        console.error('Error details:', {
+          message: error.message,
+          status: error.status,
+          response: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            baseURL: error.config?.baseURL
+          }
+        });
+      }
       return handleApiError(error);
     }
   },

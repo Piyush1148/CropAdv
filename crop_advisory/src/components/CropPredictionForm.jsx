@@ -3,11 +3,14 @@
  * Professional form for soil data input and ML-powered crop predictions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import styled from 'styled-components';
 import { Leaf, Cloud, Thermometer, Droplets, Activity, BarChart3, Loader2, CheckCircle, AlertCircle, MapPin, Zap, RefreshCw } from 'lucide-react';
 import { useCropPrediction } from '../hooks/useApi';
 import { useWeatherEnhancedPrediction, useGeolocation, useCurrentWeather } from '../hooks/useWeather';
+import { cropPredictionSchema } from '../utils/validationSchemas';
 import toast from 'react-hot-toast';
 
 const FormContainer = styled.div`
@@ -70,7 +73,7 @@ const Label = styled.label`
 
 const Input = styled.input`
   padding: 12px 16px;
-  border: 2px solid #d4e7d4;
+  border: 2px solid ${props => props.$hasError ? '#f44336' : '#d4e7d4'};
   border-radius: 12px;
   font-size: 1rem;
   background: white;
@@ -78,12 +81,26 @@ const Input = styled.input`
 
   &:focus {
     outline: none;
-    border-color: #4caf50;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+    border-color: ${props => props.$hasError ? '#f44336' : '#4caf50'};
+    box-shadow: 0 0 0 3px ${props => props.$hasError ? 'rgba(244, 67, 54, 0.1)' : 'rgba(76, 175, 80, 0.1)'};
   }
 
   &:invalid {
     border-color: #f44336;
+  }
+`;
+
+const ErrorMessage = styled.span`
+  color: #f44336;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+
+  svg {
+    width: 14px;
+    height: 14px;
   }
 `;
 
@@ -370,16 +387,29 @@ const WeatherInfoItem = styled.div`
 `;
 
 const CropPredictionForm = () => {
-  const [formData, setFormData] = useState({
-    N: '',
-    P: '',
-    K: '',
-    temperature: '',
-    humidity: '',
-    ph: '',
-    rainfall: '',
-    location: ''
+  // React Hook Form setup with Yup validation
+  const { 
+    register, 
+    handleSubmit: handleFormSubmit, 
+    formState: { errors, isValid }, 
+    setValue,
+    watch 
+  } = useForm({
+    resolver: yupResolver(cropPredictionSchema),
+    mode: 'onChange', // Validate on change for real-time feedback
+    defaultValues: {
+      N: '',
+      P: '',
+      K: '',
+      temperature: '',
+      humidity: '',
+      ph: '',
+      rainfall: '',
+      location: ''
+    }
   });
+
+  const formData = watch(); // Watch all form values
   const [useWeatherData, setUseWeatherData] = useState(false);
   const [currentLocation, setCurrentLocation] = useState({ latitude: 28.6139, longitude: 77.2090 });
 
@@ -391,57 +421,156 @@ const CropPredictionForm = () => {
   const { 
     weather: currentWeather, 
     isLoading: weatherLoading, 
-    error: currentWeatherError 
+    error: currentWeatherError,
+    refetch: refetchWeather
   } = useCurrentWeather(
-    userLocation?.latitude || currentLocation.latitude,
-    userLocation?.longitude || currentLocation.longitude
+    currentLocation.latitude,
+    currentLocation.longitude,
+    userLocation ? 'Your Location' : null
   );
 
   // Update current location when user location is obtained
   useEffect(() => {
     if (userLocation) {
-      setCurrentLocation({
+      const newLocation = {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude
+      };
+      setCurrentLocation(newLocation);
+      
+      if (import.meta.env.DEV) {
+        console.log('📍 Location updated:', userLocation);
+      }
+      
+      // Refetch weather data with new location
+      if (refetchWeather) {
+        setTimeout(() => refetchWeather(), 100);
+      }
+    }
+  }, [userLocation, refetchWeather]);
+
+  // ✅ FIX: Auto-populate form fields when weather data arrives and weather enhancement is enabled
+  const weatherPopulatedRef = useRef(false);
+  useEffect(() => {
+    if (currentWeather && useWeatherData) {
+      if (import.meta.env.DEV) {
+        console.log('🌤️ Weather data available, populating fields...', {
+          hasTemperature: !!currentWeather.temperature,
+          hasHumidity: !!currentWeather.humidity,
+          hasRain: !!(currentWeather.rain_1h || currentWeather.rain_3h),
+          useWeatherData: useWeatherData,
+          currentWeather: currentWeather
+        });
+      }
+      
+      // Update form fields with real-time weather data
+      let fieldsUpdated = false;
+      if (currentWeather.temperature !== undefined && currentWeather.temperature !== null) {
+        const tempValue = Math.round(currentWeather.temperature).toString();
+        setValue('temperature', tempValue);
+        fieldsUpdated = true;
+        if (import.meta.env.DEV) {
+          console.log('✅ Temperature set to:', tempValue);
+        }
+      }
+      if (currentWeather.humidity !== undefined && currentWeather.humidity !== null) {
+        const humValue = Math.round(currentWeather.humidity).toString();
+        setValue('humidity', humValue);
+        fieldsUpdated = true;
+        if (import.meta.env.DEV) {
+          console.log('✅ Humidity set to:', humValue);
+        }
+      }
+      // Rainfall: use rain_1h or rain_3h, default to 0 if no rain
+      const rainfall = currentWeather.rain_1h || currentWeather.rain_3h || 0;
+      const rainValue = Math.round(rainfall).toString();
+      setValue('rainfall', rainValue);
+      fieldsUpdated = true;
+      if (import.meta.env.DEV) {
+        console.log('✅ Rainfall set to:', rainValue);
+      }
+      
+      // Show toast only once when fields are populated
+      if (fieldsUpdated && !weatherPopulatedRef.current) {
+        toast.success('Weather data loaded successfully!', { duration: 2000 });
+        weatherPopulatedRef.current = true;
+      }
+    } else if (import.meta.env.DEV) {
+      console.log('⚠️ Weather not populating because:', {
+        hasWeather: !!currentWeather,
+        weatherEnabled: useWeatherData,
+        currentWeather: currentWeather,
+        currentWeatherError: currentWeatherError
       });
     }
-  }, [userLocation]);
+  }, [currentWeather, useWeatherData, setValue, currentWeatherError]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (data) => {
     try {
-      let predictionData = { ...formData };
+      let predictionData = { ...data };
+      
+      // 🔍 DEBUG: Log input values
+      console.log('📊 PREDICTION INPUT VALUES:');
+      console.log('  N (Nitrogen):', data.N);
+      console.log('  P (Phosphorus):', data.P);
+      console.log('  K (Potassium):', data.K);
+      console.log('  Temperature:', data.temperature);
+      console.log('  Humidity:', data.humidity);
+      console.log('  pH:', data.ph);
+      console.log('  Rainfall:', data.rainfall);
+      console.log('  Location:', data.location);
+      console.log('  Weather Mode:', useWeatherData ? 'ENABLED' : 'DISABLED');
       
       if (useWeatherData) {
         // Enhance prediction with real-time weather data
-        toast.loading('Enhancing prediction with real-time weather data...', { duration: 2000 });
+        const toastId = toast.loading('Enhancing prediction with real-time weather data...');
         
-        const enhancedData = await getEnhancedPrediction(
-          formData, 
-          userLocation?.latitude || currentLocation.latitude, 
-          userLocation?.longitude || currentLocation.longitude
-        );
-        predictionData = enhancedData;
-        toast.success('Weather data integrated successfully!');
+        try {
+          const enhancedData = await getEnhancedPrediction(
+            data, 
+            userLocation?.latitude || currentLocation.latitude, 
+            userLocation?.longitude || currentLocation.longitude
+          );
+          predictionData = enhancedData;
+          
+          // 🔍 DEBUG: Log enhanced values
+          console.log('🌤️ WEATHER-ENHANCED VALUES:');
+          console.log('  Temperature:', enhancedData.temperature);
+          console.log('  Humidity:', enhancedData.humidity);
+          console.log('  Rainfall:', enhancedData.rainfall);
+          
+          toast.success('Weather data integrated successfully!', { id: toastId });
+        } catch (weatherError) {
+          toast.error('Weather enhancement failed, using manual inputs', { id: toastId });
+          if (import.meta.env.DEV) {
+            console.error('Weather enhancement error:', weatherError);
+          }
+          // Continue with manual inputs
+        }
       }
       
+      // 🔍 DEBUG: Log final prediction data being sent to API
+      console.log('🚀 SENDING TO API:', predictionData);
+      
       const result = await predictCrop(predictionData);
+      
+      // 🔍 DEBUG: Log prediction result
+      console.log('✅ PREDICTION RESULT:', result);
+      console.log('  Predicted Crop:', result?.prediction || result?.recommendations?.[0]?.crop_name);
+      console.log('  Confidence:', result?.confidence || result?.recommendations?.[0]?.confidence_score);
+      
+      if (import.meta.env.DEV) {
+        console.log('Prediction result:', result);
+      }
       toast.success(useWeatherData ? 
         'Weather-enhanced prediction completed!' : 
-        'Crop prediction completed!'
-      );
-      console.log('Prediction result:', result);
-    } catch (error) {
-      toast.error(error.message || 'Prediction failed');
+        'Prediction completed successfully!');
+    } catch (err) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to get prediction';
+      toast.error(errorMessage);
+      if (import.meta.env.DEV) {
+        console.error('Prediction error:', err);
+      }
     }
   };
 
@@ -462,8 +591,6 @@ const CropPredictionForm = () => {
       toast('Weather enhancement disabled. Using manual weather inputs.');
     }
   };
-
-  const isFormValid = Object.values(formData).every(value => value.trim() !== '');
 
   return (
     <FormContainer>
@@ -565,7 +692,7 @@ const CropPredictionForm = () => {
         )}
       </WeatherEnhancementSection>
 
-      <Form onSubmit={handleSubmit}>
+      <Form onSubmit={handleFormSubmit(handleSubmit)}>
         <FormGroup>
           <Label>
             <Activity />
@@ -573,15 +700,17 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="N"
-            value={formData.N}
-            onChange={handleChange}
-            placeholder="Enter nitrogen content (0-300)"
-            min="0"
-            max="300"
             step="0.1"
-            required
+            placeholder="Enter nitrogen content (0-140)"
+            $hasError={!!errors.N}
+            {...register('N')}
           />
+          {errors.N && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.N.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -591,15 +720,17 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="P"
-            value={formData.P}
-            onChange={handleChange}
-            placeholder="Enter phosphorus content (0-300)"
-            min="0"
-            max="300"
             step="0.1"
-            required
+            placeholder="Enter phosphorus content (5-145)"
+            $hasError={!!errors.P}
+            {...register('P')}
           />
+          {errors.P && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.P.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -609,15 +740,17 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="K"
-            value={formData.K}
-            onChange={handleChange}
-            placeholder="Enter potassium content (0-300)"
-            min="0"
-            max="300"
             step="0.1"
-            required
+            placeholder="Enter potassium content (5-205)"
+            $hasError={!!errors.K}
+            {...register('K')}
           />
+          {errors.K && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.K.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -627,12 +760,16 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="text"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
             placeholder="Enter your village or city name"
-            required
+            $hasError={!!errors.location}
+            {...register('location')}
           />
+          {errors.location && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.location.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -642,15 +779,17 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="temperature"
-            value={formData.temperature}
-            onChange={handleChange}
-            placeholder="Average temperature (-10 to 60°C)"
-            min="-10"
-            max="60"
             step="0.1"
-            required
+            placeholder="Enter average temperature (8-43°C)"
+            $hasError={!!errors.temperature}
+            {...register('temperature')}
           />
+          {errors.temperature && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.temperature.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -660,15 +799,17 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="humidity"
-            value={formData.humidity}
-            onChange={handleChange}
-            placeholder="Relative humidity (0-100%)"
-            min="0"
-            max="100"
             step="0.1"
-            required
+            placeholder="Relative humidity (14-99%)"
+            $hasError={!!errors.humidity}
+            {...register('humidity')}
           />
+          {errors.humidity && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.humidity.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -678,15 +819,17 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="ph"
-            value={formData.ph}
-            onChange={handleChange}
-            placeholder="Soil pH (0-14)"
-            min="0"
-            max="14"
             step="0.1"
-            required
+            placeholder="Soil pH (3.5-9.9)"
+            $hasError={!!errors.ph}
+            {...register('ph')}
           />
+          {errors.ph && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.ph.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
 
         <FormGroup>
@@ -696,23 +839,25 @@ const CropPredictionForm = () => {
           </Label>
           <Input
             type="number"
-            name="rainfall"
-            value={formData.rainfall}
-            onChange={handleChange}
-            placeholder="Annual rainfall (0-3000mm)"
-            min="0"
-            max="3000"
             step="0.1"
-            required
+            placeholder="Annual rainfall (20-298mm)"
+            $hasError={!!errors.rainfall}
+            {...register('rainfall')}
           />
+          {errors.rainfall && (
+            <ErrorMessage>
+              <AlertCircle />
+              {errors.rainfall.message}
+            </ErrorMessage>
+          )}
         </FormGroup>
       </Form>
 
       <ButtonContainer>
         <PredictButton 
           type="submit" 
-          onClick={handleSubmit}
-          disabled={!isFormValid || isLoading || weatherEnhancing}
+          onClick={handleFormSubmit(handleSubmit)}
+          disabled={!isValid || isLoading || weatherEnhancing}
         >
           {isLoading || weatherEnhancing ? (
             <>

@@ -67,12 +67,16 @@
         document.getElementById('error-details').textContent = `Promise Rejection: ${event.reason}`;
       });
       
-      // Monitor React mounting
+      // Monitor React mounting - optimized to only log once
+      let hasLogged = false;
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
-          if (mutation.addedNodes.length > 0) {
-            console.log('✅ React content detected, React is mounting!');
+          if (mutation.addedNodes.length > 0 && !hasLogged) {
+            console.log('✅ React app mounted successfully!');
             document.getElementById('loading').style.display = 'none';
+            hasLogged = true;
+            // Disconnect observer after first mount to prevent excessive logging
+            observer.disconnect();
           }
         });
       });

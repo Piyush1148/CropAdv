@@ -97,6 +97,11 @@ async def startup_event():
     print("🌱 Crop Advisory System API starting up...")
     print(f"📊 Debug mode: {settings.DEBUG}")
     print(f"🔥 Firebase project: {settings.FIREBASE_PROJECT_ID}")
+    
+    # Load ML model on startup
+    from app.api.crops import load_ml_model
+    load_ml_model()
+    
     print("✅ API ready to serve crop recommendations!")
 
 @app.on_event("shutdown")

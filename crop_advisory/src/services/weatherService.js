@@ -4,37 +4,59 @@
  */
 
 import axios from 'axios';
+import API_CONFIG from '../config/api';
 
 // Create a separate weather client with correct base URL
 const weatherApiClient = axios.create({
-  baseURL: 'http://localhost:8000',  // Direct to backend, not /api prefix
-  timeout: 30000, // Increased timeout to 30 seconds for better reliability
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: API_CONFIG.BASE_URL,  // Use centralized config (direct to backend, not /api prefix)
+  timeout: API_CONFIG.TIMEOUT,
+  headers: API_CONFIG.HEADERS,
 });
 
 // Retry function for better resilience
-const retryRequest = async (requestFn, maxRetries = 2, delay = 1000) => {
+const retryRequest = async (requestFn, maxRetries = 3, delay = 1000) => {
+  let lastError;
+  
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     try {
-      return await requestFn();
+      const result = await requestFn();
+      if (import.meta.env.DEV) {
+        console.log(`✅ Request succeeded on attempt ${attempt}`);
+      }
+      return result;
     } catch (error) {
+      lastError = error;
+      
+      if (import.meta.env.DEV) {
+        console.error(`❌ Request attempt ${attempt} failed:`, {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+      }
+      
       if (attempt === maxRetries + 1) {
-        throw error; // Last attempt, throw the error
+        break; // Exit loop, throw below
       }
       
       // Only retry on timeout or network errors
       if (error.code === 'ECONNABORTED' || error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-        console.warn(`Weather API attempt ${attempt} failed, retrying in ${delay}ms...`, error.message);
+        if (import.meta.env.DEV) {
+          console.warn(`Weather API attempt ${attempt} failed, retrying in ${delay}ms...`, error.message);
+        }
         await new Promise(resolve => setTimeout(resolve, delay));
         delay *= 1.5; // Exponential backoff
       } else {
-        throw error; // Don't retry on other errors (4xx, etc.)
+        break; // Don't retry on other errors (4xx, etc.)
       }
     }
   }
+  
+  // If we get here, all attempts failed
+  throw lastError || new Error('Request failed with no error details');
 };
+
 
 // Response interceptor for consistent error handling
 weatherApiClient.interceptors.response.use(
@@ -162,12 +184,28 @@ export const weatherService = {
         params.location = location;
       }
 
+      if (import.meta.env.DEV) {
+        console.log('📡 Weather API request:', { endpoint: WEATHER_ENDPOINTS.CURRENT, params });
+      }
+
       const response = await retryRequest(
         () => weatherApiClient.get(WEATHER_ENDPOINTS.CURRENT, { params })
       );
+      
+      if (import.meta.env.DEV) {
+        console.log('📡 Weather API response:', response);
+      }
+      
+      // ✅ FIX: Check if response exists and has data
+      if (!response || !response.data) {
+        throw new Error('Weather API returned empty response');
+      }
+      
       return response.data;
     } catch (error) {
-      throw error;
+      console.error('❌ Weather API Error:', error);
+      // Re-throw with more context
+      throw new Error(error.message || 'Failed to fetch weather data');
     }
   },
 

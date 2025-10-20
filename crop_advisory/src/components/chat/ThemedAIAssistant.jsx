@@ -453,7 +453,7 @@ const TypingIndicator = styled.div`
 `;
 
 const ThemedAIAssistant = () => {
-  console.log('🎯 ThemedAIAssistant rendering...');
+  // Component renders normally - logging removed to prevent console spam
 
   const {
     messages,
@@ -567,17 +567,7 @@ const ThemedAIAssistant = () => {
     sendMessage(prompt);
   };
 
-
-
-
-
-  console.log('Current state:', { 
-    messagesCount: messages?.length || 0, 
-    isLoading, 
-    isTyping, 
-    error,
-    sessionId 
-  });
+  // Debug logging removed to prevent excessive console output
 
   return (
     <MainContainer>

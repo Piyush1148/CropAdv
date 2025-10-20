@@ -10,7 +10,7 @@ const CardContainer = styled.div`
   transition: all ${theme.animations.transition.normal};
   overflow: hidden;
   
-  ${props => props.hover && `
+  ${props => props.$hover && `
     &:hover {
       box-shadow: ${theme.shadows.md};
       transform: translateY(-2px);
@@ -18,7 +18,7 @@ const CardContainer = styled.div`
     }
   `}
   
-  ${props => props.interactive && `
+  ${props => props.$interactive && `
     cursor: pointer;
     
     &:hover {
@@ -33,7 +33,7 @@ const CardContainer = styled.div`
     }
   `}
   
-  ${props => props.variant === 'outlined' && `
+  ${props => props.$variant === 'outlined' && `
     border: 2px solid ${theme.colors.border.medium};
     box-shadow: none;
     
@@ -43,7 +43,7 @@ const CardContainer = styled.div`
     }
   `}
   
-  ${props => props.variant === 'elevated' && `
+  ${props => props.$variant === 'elevated' && `
     box-shadow: ${theme.shadows.lg};
     
     &:hover {
@@ -52,7 +52,7 @@ const CardContainer = styled.div`
     }
   `}
   
-  ${props => props.variant === 'gradient' && `
+  ${props => props.$variant === 'gradient' && `
     background: linear-gradient(135deg, ${theme.colors.primary[50]} 0%, ${theme.colors.secondary[50]} 100%);
     border: 1px solid ${theme.colors.primary[200]};
   `}
@@ -61,7 +61,7 @@ const CardContainer = styled.div`
 const CardHeader = styled.div`
   padding: ${theme.spacing[6]} ${theme.spacing[6]} 0 ${theme.spacing[6]};
   
-  ${props => props.compact && `
+  ${props => props.$compact && `
     padding: ${theme.spacing[4]} ${theme.spacing[4]} 0 ${theme.spacing[4]};
   `}
 `;
@@ -69,11 +69,11 @@ const CardHeader = styled.div`
 const CardBody = styled.div`
   padding: ${theme.spacing[6]};
   
-  ${props => props.compact && `
+  ${props => props.$compact && `
     padding: ${theme.spacing[4]};
   `}
   
-  ${props => props.noPadding && `
+  ${props => props.$noPadding && `
     padding: 0;
   `}
 `;
@@ -84,11 +84,11 @@ const CardFooter = styled.div`
   margin-top: ${theme.spacing[4]};
   padding-top: ${theme.spacing[4]};
   
-  ${props => props.compact && `
+  ${props => props.$compact && `
     padding: 0 ${theme.spacing[4]} ${theme.spacing[4]} ${theme.spacing[4]};
   `}
   
-  ${props => props.noBorder && `
+  ${props => props.$noBorder && `
     border-top: none;
     margin-top: 0;
     padding-top: 0;
@@ -133,9 +133,9 @@ const Card = ({
 }) => {
   return (
     <CardContainer
-      variant={variant}
-      hover={hover}
-      interactive={interactive}
+      $variant={variant}
+      $hover={hover}
+      $interactive={interactive}
       className={className}
       onClick={onClick}
       {...props}
@@ -146,19 +146,19 @@ const Card = ({
 };
 
 Card.Header = ({ children, compact = false, ...props }) => (
-  <CardHeader compact={compact} {...props}>
+  <CardHeader $compact={compact} {...props}>
     {children}
   </CardHeader>
 );
 
 Card.Body = ({ children, compact = false, noPadding = false, ...props }) => (
-  <CardBody compact={compact} noPadding={noPadding} {...props}>
+  <CardBody $compact={compact} $noPadding={noPadding} {...props}>
     {children}
   </CardBody>
 );
 
 Card.Footer = ({ children, compact = false, noBorder = false, ...props }) => (
-  <CardFooter compact={compact} noBorder={noBorder} {...props}>
+  <CardFooter $compact={compact} $noBorder={noBorder} {...props}>
     {children}
   </CardFooter>
 );
