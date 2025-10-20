@@ -26,6 +26,10 @@ export const useChatFirestore = (initialSessionId = null) => {
   // Refs for auto-scroll and input focus
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  
+  // Token caching to avoid generating new tokens for every request
+  const cachedTokenRef = useRef(null);
+  const tokenExpiryRef = useRef(0);
 
   // Debug logging
   const debugLog = (message, data = null) => {
@@ -33,29 +37,65 @@ export const useChatFirestore = (initialSessionId = null) => {
   };
 
   /**
-   * Get Firebase ID Token for authentication
+   * Get Firebase ID Token for authentication with caching
    */
   const getAuthToken = useCallback(async () => {
     if (!user) {
+      debugLog('❌ No user in context');
       throw new Error('User not authenticated');
+    }
+    
+    // Check if we have a valid cached token (expires in 55 minutes, we refresh at 50)
+    const now = Date.now();
+    if (cachedTokenRef.current && tokenExpiryRef.current > now) {
+      const timeLeft = Math.round((tokenExpiryRef.current - now) / 1000);
+      debugLog(`✅ Using cached token (expires in ${timeLeft}s)`);
+      return cachedTokenRef.current;
     }
     
     try {
       // Import Firebase auth to get current user
       const { auth } = await import('../services/authService');
-      const currentUser = auth.currentUser;
+      
+      // Wait for auth to be ready (max 5 seconds)
+      let attempts = 0;
+      let currentUser = auth.currentUser;
+      
+      while (!currentUser && attempts < 10) {
+        debugLog(`⏳ Waiting for Firebase auth... (attempt ${attempts + 1}/10)`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        currentUser = auth.currentUser;
+        attempts++;
+      }
       
       if (!currentUser) {
+        debugLog('❌ Firebase user still not available after waiting');
         throw new Error('Firebase user not available');
       }
       
-      // Get fresh ID token
-      const token = await currentUser.getIdToken();
-      debugLog('Auth token obtained successfully');
+      debugLog('✅ Firebase user found:', currentUser.uid);
+      
+      // Get fresh ID token (force refresh to ensure it's valid)
+      debugLog('🔄 Generating new token...');
+      const token = await currentUser.getIdToken(true);
+      debugLog('Auth token obtained successfully', token ? '✅ Token exists' : '❌ Token is null');
+      
+      if (!token) {
+        throw new Error('Failed to retrieve Firebase ID token');
+      }
+      
+      // Cache the token (expires in 50 minutes - Firebase tokens last 1 hour)
+      cachedTokenRef.current = token;
+      tokenExpiryRef.current = now + (50 * 60 * 1000); // 50 minutes
+      debugLog(`💾 Token cached (expires in 50 minutes)`);
+      
       return token;
     } catch (error) {
       debugLog('Auth token error:', error);
-      throw new Error('Failed to get authentication token');
+      // Clear cache on error
+      cachedTokenRef.current = null;
+      tokenExpiryRef.current = 0;
+      throw new Error(`Failed to get authentication token: ${error.message}`);
     }
   }, [user]);
 
@@ -65,6 +105,7 @@ export const useChatFirestore = (initialSessionId = null) => {
   const makeAuthenticatedRequest = useCallback(async (endpoint, options = {}) => {
     try {
       const token = await getAuthToken();
+      debugLog('📝 Token for request:', token ? `${token.substring(0, 20)}...` : 'NULL TOKEN');
       
       const defaultOptions = {
         method: 'GET',
@@ -85,11 +126,13 @@ export const useChatFirestore = (initialSessionId = null) => {
       
       const url = `http://localhost:8000/api/chat${endpoint}`;
       debugLog('Making authenticated request to:', url);
+      debugLog('Request headers:', requestOptions.headers);
       
       const response = await fetch(url, requestOptions);
       
       if (!response.ok) {
         const errorText = await response.text();
+        debugLog('❌ Request failed:', { status: response.status, error: errorText });
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
@@ -117,7 +160,24 @@ export const useChatFirestore = (initialSessionId = null) => {
       setSessions(response || []);
     } catch (error) {
       debugLog('Load sessions error:', error);
-      setError(`Failed to load chat sessions: ${error.message}`);
+      
+      // If 401 error, try one more time after a short delay
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        debugLog('⚠️ Got 401, retrying after 2 seconds...');
+        try {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const retryResponse = await makeAuthenticatedRequest('/sessions');
+          debugLog('✅ Retry successful! Sessions loaded:', retryResponse);
+          setSessions(retryResponse || []);
+          return; // Success on retry
+        } catch (retryError) {
+          debugLog('❌ Retry failed:', retryError);
+          // Only show error if retry also fails
+          setError(`Failed to load chat sessions: ${retryError.message}`);
+        }
+      } else {
+        setError(`Failed to load chat sessions: ${error.message}`);
+      }
     }
   }, [user, makeAuthenticatedRequest]);
 
@@ -197,10 +257,32 @@ export const useChatFirestore = (initialSessionId = null) => {
 
       debugLog('Sending message to Firestore endpoint:', requestBody);
       
-      const response = await makeAuthenticatedRequest('/message', {
-        method: 'POST',
-        body: JSON.stringify(requestBody)
-      });
+      let response;
+      try {
+        response = await makeAuthenticatedRequest('/message', {
+          method: 'POST',
+          body: JSON.stringify(requestBody)
+        });
+      } catch (error) {
+        // If 401 error, retry once after 2 seconds with fresh token
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          debugLog('⚠️ Got 401 on send message, retrying after 2 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          try {
+            response = await makeAuthenticatedRequest('/message', {
+              method: 'POST',
+              body: JSON.stringify(requestBody)
+            });
+            debugLog('✅ Retry successful! Message sent');
+          } catch (retryError) {
+            debugLog('❌ Retry failed:', retryError);
+            throw retryError; // Re-throw to be caught by outer catch
+          }
+        } else {
+          throw error; // Re-throw non-401 errors
+        }
+      }
 
       debugLog('Message response from Firestore:', response);
 
@@ -332,7 +414,12 @@ export const useChatFirestore = (initialSessionId = null) => {
   useEffect(() => {
     if (user) {
       debugLog('User authenticated, loading sessions:', user);
-      loadSessions();
+      // Add a delay to ensure Firebase auth is fully ready
+      const timer = setTimeout(() => {
+        loadSessions();
+      }, 2000); // Wait 2 seconds for Firebase to fully initialize
+      
+      return () => clearTimeout(timer);
     } else {
       debugLog('No user authenticated, clearing sessions');
       setSessions([]);

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Available Hindi Voices</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; }
+        h2 { color: #27ae60; margin-top: 20px; }
+        .voice-card {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #27ae60;
+            border-radius: 4px;
+        }
+        .voice-name { 
+            font-weight: bold; 
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .voice-details { 
+            color: #666; 
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .test-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .test-btn:hover {
+            background: #229954;
+        }
+        .test-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .language-section {
+            margin-bottom: 30px;
+        }
+        .count {
+            background: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        .test-text {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 4px;
+            border-left: 4px solid #27ae60;
+        }
+        .hindi-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .english-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Available Voice Options for Multilingual Support</h1>
+        <p>This page will show all available voices in your browser, focusing on Hindi and other Indian languages.</p>
+        
+        <div class="test-text">
+            <p><strong>Hindi Test Phrase:</strong></p>
+            <p class="hindi-text">नमस्ते, मैं आपका AI सहायक हूं। मैं फसल सलाह में आपकी मदद कर सकता हूं।</p>
+            <p class="english-text">(Namaste, I am your AI assistant. I can help you with crop advisory.)</p>
+        </div>
+        
+        <div id="loading" class="loading">Loading voices...</div>
+        <div id="voices-container"></div>
+    </div>
+
+    <script>
+        const testPhrase = "नमस्ते, मैं आपका AI सहायक हूं। मैं फसल सलाह में आपकी मदद कर सकता हूं।";
+        const englishPhrase = "Hello, I am your AI assistant. I can help you with crop advisory.";
+        
+        let currentUtterance = null;
+
+        function testVoice(voice, phrase) {
+            // Stop any ongoing speech
+            if (currentUtterance) {
+                window.speechSynthesis.cancel();
+            }
+
+            currentUtterance = new SpeechSynthesisUtterance(phrase);
+            currentUtterance.voice = voice;
+            currentUtterance.rate = 1.0;
+            currentUtterance.pitch = 1.0;
+            currentUtterance.volume = 1.0;
+
+            currentUtterance.onend = () => {
+                console.log(`Finished speaking with ${voice.name}`);
+            };
+
+            currentUtterance.onerror = (event) => {
+                console.error(`Error speaking with ${voice.name}:`, event);
+            };
+
+            window.speechSynthesis.speak(currentUtterance);
+        }
+
+        function displayVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            
+            if (voices.length === 0) {
+                document.getElementById('loading').textContent = 'No voices found. Please wait...';
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+
+            // Group voices by language
+            const voicesByLanguage = {};
+            voices.forEach(voice => {
+                const lang = voice.lang;
+                if (!voicesByLanguage[lang]) {
+                    voicesByLanguage[lang] = [];
+                }
+                voicesByLanguage[lang].push(voice);
+            });
+
+            // Priority languages (Indian languages + English)
+            const priorityLangs = {
+                'hi-IN': '🇮🇳 Hindi (India)',
+                'en-IN': '🇮🇳 English (India)',
+                'en-US': '🇺🇸 English (US)',
+                'en-GB': '🇬🇧 English (UK)',
+                'bn-IN': '🇮🇳 Bengali (India)',
+                'ta-IN': '🇮🇳 Tamil (India)',
+                'te-IN': '🇮🇳 Telugu (India)',
+                'mr-IN': '🇮🇳 Marathi (India)',
+                'gu-IN': '🇮🇳 Gujarati (India)',
+                'kn-IN': '🇮🇳 Kannada (India)',
+                'ml-IN': '🇮🇳 Malayalam (India)',
+                'pa-IN': '🇮🇳 Punjabi (India)'
+            };
+
+            const container = document.getElementById('voices-container');
+            container.innerHTML = '';
+
+            // Display priority languages first
+            Object.keys(priorityLangs).forEach(langCode => {
+                if (voicesByLanguage[langCode]) {
+                    createLanguageSection(langCode, priorityLangs[langCode], voicesByLanguage[langCode], container);
+                    delete voicesByLanguage[langCode]; // Remove from remaining
+                }
+            });
+
+            // Display other languages
+            const otherSection = document.createElement('div');
+            otherSection.innerHTML = '<h2>📋 Other Available Languages <span class="count">' + Object.keys(voicesByLanguage).length + '</span></h2>';
+            container.appendChild(otherSection);
+
+            Object.keys(voicesByLanguage).sort().forEach(langCode => {
+                createLanguageSection(langCode, `${langCode}`, voicesByLanguage[langCode], container, true);
+            });
+        }
+
+        function createLanguageSection(langCode, title, voices, container, collapsed = false) {
+            const section = document.createElement('div');
+            section.className = 'language-section';
+            
+            const isHindi = langCode === 'hi-IN';
+            const titleClass = isHindi ? 'style="color: #e74c3c; font-weight: bold;"' : '';
+            
+            section.innerHTML = `
+                <h2 ${titleClass}>
+                    ${title} 
+                    <span class="count">${voices.length} voice${voices.length > 1 ? 's' : ''}</span>
+                </h2>
+            `;
+
+            voices.forEach(voice => {
+                const card = document.createElement('div');
+                card.className = 'voice-card';
+                
+                const phrase = langCode.startsWith('hi') ? testPhrase : 
+                              langCode.startsWith('en') ? englishPhrase : 
+                              `Hello, this is ${voice.name}`;
+
+                card.innerHTML = `
+                    <div class="voice-name">${voice.name}</div>
+                    <div class="voice-details">
+                        <strong>Language:</strong> ${voice.lang} | 
+                        <strong>Local:</strong> ${voice.localService ? 'Yes (Offline)' : 'No (Online)'} | 
+                        <strong>Default:</strong> ${voice.default ? 'Yes' : 'No'}
+                    </div>
+                    <button class="test-btn" onclick='testVoice(window.speechSynthesis.getVoices().find(v => v.name === "${voice.name.replace(/'/g, "\\'")}"), \`${phrase.replace(/`/g, '\\`')}\`)'>
+                        🔊 Test This Voice
+                    </button>
+                `;
+                
+                section.appendChild(card);
+            });
+
+            container.appendChild(section);
+        }
+
+        // Load voices
+        function loadVoices() {
+            displayVoices();
+        }
+
+        // Voices might load asynchronously
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // Also try loading immediately
+        loadVoices();
+
+        // Retry after 1 second if no voices yet
+        setTimeout(() => {
+            if (window.speechSynthesis.getVoices().length > 0) {
+                loadVoices();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

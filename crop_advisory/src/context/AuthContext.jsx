@@ -23,6 +23,7 @@ const initialState = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  authReady: false, // Track if Firebase auth is fully initialized
   error: null,
   token: null,
 };
@@ -43,6 +44,7 @@ const authReducer = (state, action) => {
         ...state,
         isLoading: false,
         isAuthenticated: true,
+        authReady: true, // Auth is ready when login succeeds
         user: action.payload.user,
         token: action.payload.token,
         error: null,
@@ -53,6 +55,7 @@ const authReducer = (state, action) => {
         ...state,
         isLoading: false,
         isAuthenticated: true,
+        authReady: true, // Auth is ready when register succeeds
         user: action.payload.user,
         token: action.payload.token,
         error: null,
@@ -64,6 +67,7 @@ const authReducer = (state, action) => {
         ...state,
         isLoading: false,
         isAuthenticated: false,
+        authReady: true, // Auth is ready even on failure (not loading anymore)
         user: null,
         token: null,
         error: action.payload,
@@ -72,6 +76,7 @@ const authReducer = (state, action) => {
     case AUTH_ACTIONS.LOGOUT:
       return {
         ...initialState,
+        authReady: true, // Keep authReady true after logout (Firebase still initialized)
       };
 
     case AUTH_ACTIONS.UPDATE_PROFILE:
@@ -136,8 +141,10 @@ export const AuthProvider = ({ children }) => {
         },
       });
     } else {
-      // User is signed out
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      // User is signed out - but auth is still ready (Firebase initialized)
+      if (!firebaseLoading) {
+        dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      }
     }
   }, [firebaseUser, firebaseLoading, firebaseError]);
 
@@ -346,6 +353,7 @@ export const AuthProvider = ({ children }) => {
     // Additional Firebase-specific properties
     firebaseUser,
     isLoading: state.isLoading || firebaseLoading,
+    authReady: !firebaseLoading && state.authReady, // Auth is ready when Firebase loaded and state is ready
   };
 
   return (

@@ -8,7 +8,14 @@ import styled from 'styled-components';
 import { marked } from 'marked';
 import { useChatFirestore as useChat } from '../../hooks/useChatFirestore';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { useVoice } from '../../hooks/useVoice';
 import AuthContext from '../../context/AuthContext';
+import {
+  MicrophoneButton,
+  SpeakerButton,
+  VoiceSettingsPanel,
+  MessageVoiceControls
+} from './VoiceControls';
 
 // Theme colors matching the main application
 const theme = {
@@ -456,6 +463,9 @@ const TypingIndicator = styled.div`
 const ThemedAIAssistant = () => {
   // Component renders normally - logging removed to prevent console spam
 
+  // ✅ Get auth state to check if Firebase is ready
+  const { authReady } = useContext(AuthContext);
+
   // ✅ NEW: Fetch user profile for personalized AI context
   const { profile, profileComplete, getAIContext } = useUserProfile();
 
@@ -477,6 +487,54 @@ const ThemedAIAssistant = () => {
   } = useChat();
 
   const [connectionStatus, setConnectionStatus] = useState('Testing...');
+  const [speakingMessageId, setSpeakingMessageId] = useState(null); // Track which message is speaking
+
+  // ✅ NEW: Voice functionality hook
+  const voice = useVoice();
+
+  // ✅ NEW: Voice input handler
+  const handleVoiceInput = (transcript) => {
+    if (transcript && transcript.trim()) {
+      setInputMessage(transcript);
+      console.log('🎤 Voice input received:', transcript);
+    }
+  };
+
+  // ✅ NEW: Voice input error handler
+  const handleVoiceError = (error) => {
+    console.error('🎤 Voice input error:', error);
+    // Optionally show error to user
+  };
+
+  // ✅ NEW: Speak message handler
+  const handleSpeakMessage = (messageContent, messageId) => {
+    if (speakingMessageId === messageId && voice.isSpeaking) {
+      // If this message is already speaking, toggle pause/resume
+      if (voice.isPaused) {
+        voice.resumeSpeaking();
+      } else {
+        voice.pauseSpeaking();
+      }
+    } else {
+      // Stop any current speech and start new one
+      voice.stopSpeaking();
+      setSpeakingMessageId(messageId);
+      voice.speak(messageContent);
+    }
+  };
+
+  // ✅ NEW: Stop speaking handler
+  const handleStopSpeaking = () => {
+    voice.stopSpeaking();
+    setSpeakingMessageId(null);
+  };
+
+  // ✅ NEW: Clean up voice when message is removed
+  useEffect(() => {
+    return () => {
+      voice.stopSpeaking();
+    };
+  }, []);
 
   // Test backend connection and show profile status on component mount
   useEffect(() => {
@@ -559,6 +617,13 @@ const ThemedAIAssistant = () => {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // ✅ Check if Firebase auth is ready before sending
+    if (!authReady) {
+      console.warn('⏳ Waiting for Firebase authentication to initialize...');
+      // Show a brief message to user
+      return;
+    }
+
     try {
       console.log('Sending message:', inputMessage);
       await sendMessage(inputMessage.trim());
@@ -576,6 +641,12 @@ const ThemedAIAssistant = () => {
   };
 
   const handleQuickAction = (prompt) => {
+    // ✅ Check if auth is ready before sending
+    if (!authReady) {
+      console.warn('⏳ Waiting for Firebase authentication to initialize...');
+      return;
+    }
+    
     setInputMessage(prompt);
     // Auto-send quick action
     sendMessage(prompt);
@@ -678,6 +749,19 @@ const ThemedAIAssistant = () => {
                     <MarkdownContent content={message.content} />
                   )}
                 </MessageContent>
+                {/* ✅ NEW: Voice controls for AI messages */}
+                {message.role === 'assistant' && (
+                  <div style={{ marginTop: '8px' }}>
+                    <MessageVoiceControls
+                      isSpeaking={speakingMessageId === message.id && voice.isSpeaking}
+                      isPaused={speakingMessageId === message.id && voice.isPaused}
+                      onSpeak={() => handleSpeakMessage(message.content, message.id)}
+                      onPause={() => voice.pauseSpeaking()}
+                      onResume={() => voice.resumeSpeaking()}
+                      onStop={handleStopSpeaking}
+                    />
+                  </div>
+                )}
               </MessageBubble>
             ))
           ) : (
@@ -695,20 +779,47 @@ const ThemedAIAssistant = () => {
         </MessagesContainer>
 
         <ChatInputContainer>
+          {/* ✅ NEW: Voice settings panel */}
+          <div style={{ padding: '8px 16px', borderTop: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            <VoiceSettingsPanel
+              speechRate={voice.speechRate}
+              onSpeedChange={(rate) => voice.changeSpeechRate(rate)}
+              isMuted={voice.isMuted}
+              onMuteToggle={() => voice.toggleMute()}
+              compact={true}
+            />
+            {voice.error && (
+              <div style={{ fontSize: '12px', color: theme.error }}>
+                {voice.error}
+              </div>
+            )}
+          </div>
+          
           <InputWrapper>
+            {/* ✅ NEW: Microphone button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '8px' }}>
+              <MicrophoneButton
+                isListening={voice.isListening}
+                onStart={() => voice.startListening(handleVoiceInput, handleVoiceError)}
+                onStop={() => voice.stopListening()}
+                disabled={isLoading}
+              />
+            </div>
+            
             <MessageInput
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="💬 Ask about crops, soil, pests, irrigation, or any farming question..."
-              disabled={isLoading}
+              placeholder={!authReady ? "⏳ Initializing..." : voice.isListening ? "🎤 Listening..." : "💬 Ask about crops, soil, pests, irrigation, or any farming question..."}
+              disabled={isLoading || !authReady}
             />
             <SendButton 
               onClick={handleSendMessage}
-              disabled={isLoading || !inputMessage.trim()}
+              disabled={isLoading || !inputMessage.trim() || !authReady}
+              title={!authReady ? "Waiting for authentication..." : ""}
             >
-              {isLoading ? '⏳' : '🚀 Send'}
+              {!authReady ? '⏳' : isLoading ? '⏳' : '🚀 Send'}
             </SendButton>
           </InputWrapper>
         </ChatInputContainer>
