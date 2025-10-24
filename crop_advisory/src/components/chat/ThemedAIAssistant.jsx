@@ -779,13 +779,16 @@ const ThemedAIAssistant = () => {
         </MessagesContainer>
 
         <ChatInputContainer>
-          {/* ✅ NEW: Voice settings panel */}
+          {/* ✅ NEW: Voice settings panel with multilingual support */}
           <div style={{ padding: '8px 16px', borderTop: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
             <VoiceSettingsPanel
               speechRate={voice.speechRate}
               onSpeedChange={(rate) => voice.changeSpeechRate(rate)}
               isMuted={voice.isMuted}
               onMuteToggle={() => voice.toggleMute()}
+              selectedLanguage={voice.selectedLanguage}
+              availableLanguages={voice.availableLanguages}
+              onLanguageChange={(lang) => voice.changeLanguage(lang)}
               compact={true}
             />
             {voice.error && (

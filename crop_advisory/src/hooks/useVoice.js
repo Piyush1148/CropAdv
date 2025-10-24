@@ -16,6 +16,12 @@ export const useVoice = () => {
   const [availableVoices, setAvailableVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [error, setError] = useState(null);
+  
+  // NEW: Multilingual support state
+  const [selectedLanguage, setSelectedLanguage] = useState('en-US'); // Default: English
+  const [availableLanguages, setAvailableLanguages] = useState([]);
+  const [hindiVoices, setHindiVoices] = useState([]);
+  const [englishVoices, setEnglishVoices] = useState([]);
 
   // Refs for Speech APIs
   const synthRef = useRef(null);
@@ -26,6 +32,7 @@ export const useVoice = () => {
   const isChangingSpeedRef = useRef(false); // Track if we're in the middle of a speed change
   const speechStartTimeRef = useRef(0); // Track when speech started
   const estimatedCharsPerSecond = useRef(15); // Estimate ~15 chars per second at normal speed
+  const currentRateRef = useRef(1.0); // Track current speech rate to avoid stale closures
   
   // Web Audio API refs for real-time volume control
   const audioContextRef = useRef(null);
@@ -44,7 +51,63 @@ export const useVoice = () => {
         const voices = synthRef.current.getVoices();
         setAvailableVoices(voices);
         
-        // Auto-select best English voice
+        // NEW: Separate voices by language
+        const hindiVoicesList = voices.filter(v => v.lang === 'hi-IN');
+        const englishVoicesList = voices.filter(v => v.lang.startsWith('en'));
+        
+        setHindiVoices(hindiVoicesList);
+        setEnglishVoices(englishVoicesList);
+        
+        // NEW: Build available languages list
+        const languages = [];
+        
+        // Add Hindi if available
+        if (hindiVoicesList.length > 0) {
+          const bestHindi = selectBestHindiVoice(voices);
+          languages.push({
+            code: 'hi-IN',
+            name: 'हिंदी (Hindi)',
+            flag: '🇮🇳',
+            voice: bestHindi,
+            voiceCount: hindiVoicesList.length
+          });
+        }
+        
+        // Add English variants
+        if (voices.some(v => v.lang === 'en-IN')) {
+          languages.push({
+            code: 'en-IN',
+            name: 'English (India)',
+            flag: '🇮🇳',
+            voice: voices.find(v => v.lang === 'en-IN'),
+            voiceCount: voices.filter(v => v.lang === 'en-IN').length
+          });
+        }
+        
+        if (voices.some(v => v.lang === 'en-US')) {
+          languages.push({
+            code: 'en-US',
+            name: 'English (US)',
+            flag: '🇺🇸',
+            voice: selectBestEnglishVoice(voices.filter(v => v.lang === 'en-US')),
+            voiceCount: voices.filter(v => v.lang === 'en-US').length
+          });
+        }
+        
+        if (voices.some(v => v.lang === 'en-GB')) {
+          languages.push({
+            code: 'en-GB',
+            name: 'English (UK)',
+            flag: '🇬🇧',
+            voice: voices.find(v => v.lang === 'en-GB'),
+            voiceCount: voices.filter(v => v.lang === 'en-GB').length
+          });
+        }
+        
+        setAvailableLanguages(languages);
+        console.log('🌐 Available languages:', languages.map(l => l.name));
+        
+        // Auto-select best English voice (default behavior)
         const bestVoice = selectBestEnglishVoice(voices);
         if (bestVoice) {
           setSelectedVoice(bestVoice);
@@ -66,7 +129,7 @@ export const useVoice = () => {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US'; // English only
+      recognitionRef.current.lang = 'en-US'; // Default to English, will change with language selection
     } else {
       setError('Speech Recognition not supported in this browser');
     }
@@ -74,9 +137,18 @@ export const useVoice = () => {
     // Load saved preferences from localStorage
     const savedRate = localStorage.getItem('voiceSpeechRate');
     const savedMuted = localStorage.getItem('voiceMuted');
+    const savedLanguage = localStorage.getItem('voiceLanguage'); // NEW: Load saved language
     
-    if (savedRate) setSpeechRate(parseFloat(savedRate));
+    if (savedRate) {
+      const rate = parseFloat(savedRate);
+      setSpeechRate(rate);
+      currentRateRef.current = rate; // Initialize ref with saved rate
+    } else {
+      currentRateRef.current = 1.0; // Default rate
+    }
+    
     if (savedMuted) setIsMuted(savedMuted === 'true');
+    if (savedLanguage) setSelectedLanguage(savedLanguage); // NEW: Restore language preference
 
     // Cleanup on unmount
     return () => {
@@ -99,7 +171,70 @@ export const useVoice = () => {
     }
   }, [error]);
 
+  // NEW: Restore saved language voice when languages are loaded
+  useEffect(() => {
+    if (availableLanguages.length > 0 && selectedLanguage) {
+      const languageConfig = availableLanguages.find(lang => lang.code === selectedLanguage);
+      
+      if (languageConfig && languageConfig.voice) {
+        setSelectedVoice(languageConfig.voice);
+        console.log(`🔄 Restored saved language: ${languageConfig.name} with voice: ${languageConfig.voice.name}`);
+        
+        // Update speech recognition language
+        if (recognitionRef.current) {
+          recognitionRef.current.lang = selectedLanguage;
+        }
+      }
+    }
+  }, [availableLanguages, selectedLanguage]);
+
   // ========== VOICE SELECTION ==========
+
+  // NEW: Select best Hindi voice (Microsoft Swara preferred)
+  const selectBestHindiVoice = (voices) => {
+    console.log('🔍 Searching for Hindi voices...');
+    
+    // Filter all Hindi voices
+    const hindiVoicesList = voices.filter(v => v.lang === 'hi-IN');
+    console.log(`📋 Found ${hindiVoicesList.length} Hindi voices:`, hindiVoicesList.map(v => v.name));
+    
+    if (hindiVoicesList.length === 0) {
+      console.warn('⚠️ No Hindi voices found. User may need to install Hindi language pack.');
+      return null;
+    }
+
+    // Priority 1: Microsoft Swara (Female, Offline, Best quality)
+    const swara = hindiVoicesList.find(v => v.name.includes('Swara'));
+    if (swara) {
+      console.log('✅ Selected: Microsoft Swara (Female, Offline)');
+      return swara;
+    }
+
+    // Priority 2: Microsoft Hemant (Male, Offline)
+    const hemant = hindiVoicesList.find(v => v.name.includes('Hemant'));
+    if (hemant) {
+      console.log('✅ Selected: Microsoft Hemant (Male, Offline)');
+      return hemant;
+    }
+
+    // Priority 3: Any Microsoft Hindi voice
+    const microsoft = hindiVoicesList.find(v => v.name.includes('Microsoft'));
+    if (microsoft) {
+      console.log('✅ Selected: Microsoft Hindi voice');
+      return microsoft;
+    }
+
+    // Priority 4: Offline voices (localService = true)
+    const offline = hindiVoicesList.find(v => v.localService);
+    if (offline) {
+      console.log('✅ Selected: Offline Hindi voice:', offline.name);
+      return offline;
+    }
+
+    // Priority 5: Any Hindi voice
+    console.log('✅ Selected: Hindi voice (online):', hindiVoicesList[0].name);
+    return hindiVoicesList[0];
+  };
 
   const selectBestEnglishVoice = (voices) => {
     // Priority order for best English voices
@@ -147,10 +282,16 @@ export const useVoice = () => {
     try {
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Configure utterance
+      // Configure utterance with language and voice
+      utterance.lang = selectedLanguage; // CRITICAL: Set language explicitly
+      
       if (selectedVoice) {
         utterance.voice = selectedVoice;
+        console.log(`🗣️ Using voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+      } else {
+        console.warn('⚠️ No voice selected, using default');
       }
+      
       utterance.rate = speechRate;
       utterance.pitch = 1.0;
       utterance.volume = 1.0; // Always full volume (mute uses pause/resume)
@@ -160,7 +301,7 @@ export const useVoice = () => {
       currentCharIndexRef.current = 0;
       speechStartTimeRef.current = Date.now(); // Track start time
       
-      console.log(`🎤 Starting speech: ${text.length} characters at ${speechRate}x speed${isMuted ? ' (will pause immediately - muted)' : ''}`);
+      console.log(`🎤 Starting speech: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}" [${text.length} chars] at ${speechRate}x speed in ${selectedLanguage}${isMuted ? ' (will pause immediately - muted)' : ''}`);
 
       // Event handlers
       utterance.onstart = () => {
@@ -168,7 +309,7 @@ export const useVoice = () => {
         setIsPaused(false);
         setError(null);
         speechStartTimeRef.current = Date.now(); // Reset on actual start
-        console.log('▶️ Speech started');
+        console.log(`▶️ Speech started with voice: ${utterance.voice?.name || 'default'} (${utterance.lang})`);
         
         // If muted, pause immediately after starting
         if (isMuted && synthRef.current) {
@@ -226,7 +367,7 @@ export const useVoice = () => {
       console.error('Error in speak function:', err);
       setError(err.message);
     }
-  }, [selectedVoice, speechRate, isMuted]);
+  }, [selectedVoice, selectedLanguage, speechRate, isMuted]); // Added selectedLanguage dependency
 
   const pauseSpeaking = useCallback(() => {
     if (synthRef.current && isSpeaking) {
@@ -265,6 +406,10 @@ export const useVoice = () => {
     }
 
     try {
+      // NEW: Set recognition language based on selected language
+      recognitionRef.current.lang = selectedLanguage;
+      console.log(`🎤 Speech recognition language set to: ${selectedLanguage}`);
+      
       // Set up event handlers
       recognitionRef.current.onstart = () => {
         setIsListening(true);
@@ -300,7 +445,7 @@ export const useVoice = () => {
       setIsListening(false);
       if (onError) onError(err.message);
     }
-  }, []);
+  }, [selectedLanguage]); // NEW: Add selectedLanguage dependency
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && isListening) {
@@ -317,8 +462,11 @@ export const useVoice = () => {
 
   const changeSpeechRate = useCallback((rate) => {
     const validRate = Math.max(0.5, Math.min(2.0, rate)); // Clamp between 0.5x and 2x
-    const previousRate = speechRate;
+    const previousRate = currentRateRef.current; // Use ref to get actual current rate
+    
+    // Update both state and ref
     setSpeechRate(validRate);
+    currentRateRef.current = validRate; // Update ref immediately
     localStorage.setItem('voiceSpeechRate', validRate.toString());
     
     console.log(`🎯 Speed change requested: ${previousRate}x → ${validRate}x`);
@@ -392,12 +540,17 @@ export const useVoice = () => {
         // Create new utterance with remaining text
         const newUtterance = new SpeechSynthesisUtterance(remainingText);
         
+        // CRITICAL: Set language explicitly for new utterance
+        newUtterance.lang = selectedLanguage;
+        
         if (selectedVoice) {
           newUtterance.voice = selectedVoice;
         }
-        newUtterance.rate = validRate;
+        newUtterance.rate = validRate; // Use the NEW rate, not speechRate state
         newUtterance.pitch = 1.0;
         newUtterance.volume = 1.0; // Always full volume (mute uses pause/resume)
+        
+        console.log(`🔄 New utterance configured: rate=${validRate}x, voice=${selectedVoice?.name}, lang=${selectedLanguage}`);
         
         // CRITICAL: Track that this new utterance is a continuation
         // The boundary events will be relative to remainingText, not originalFullText
@@ -469,8 +622,11 @@ export const useVoice = () => {
         synthRef.current.speak(newUtterance);
         
       }, 100); // Increased delay to ensure clean cancel
+    } else {
+      // Not currently speaking, just update the rate for next speech
+      console.log(`✅ Speech rate updated to ${validRate}x (will apply to next speech)`);
     }
-  }, [isSpeaking, speechRate, selectedVoice, isMuted]);
+  }, [isSpeaking, selectedVoice, selectedLanguage, isMuted]); // Removed speechRate to avoid stale closure
 
   const toggleMute = useCallback(() => {
     const newMuted = !isMuted;
@@ -498,6 +654,43 @@ export const useVoice = () => {
     setSelectedVoice(voice);
   }, []);
 
+  // NEW: Language switching function
+  const changeLanguage = useCallback((languageCode) => {
+    console.log(`🌐 Changing language to: ${languageCode}`);
+    
+    // Update selected language
+    setSelectedLanguage(languageCode);
+    localStorage.setItem('voiceLanguage', languageCode);
+    
+    // Find the language configuration
+    const languageConfig = availableLanguages.find(lang => lang.code === languageCode);
+    
+    if (!languageConfig) {
+      console.warn(`⚠️ Language ${languageCode} not found in available languages`);
+      return;
+    }
+    
+    // Auto-select the best voice for this language
+    if (languageConfig.voice) {
+      setSelectedVoice(languageConfig.voice);
+      console.log(`✅ Voice changed to: ${languageConfig.voice.name}`);
+    }
+    
+    // Update speech recognition language
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = languageCode;
+      console.log(`✅ Speech recognition language updated to: ${languageCode}`);
+    }
+    
+    // If currently speaking, stop and let user restart with new language
+    if (isSpeaking) {
+      stopSpeaking();
+      console.log('🛑 Stopped current speech due to language change');
+    }
+    
+    console.log(`🎉 Language switched successfully to ${languageConfig.name}`);
+  }, [availableLanguages, isSpeaking, stopSpeaking]);
+
   // ========== UTILITY FUNCTIONS ==========
 
   const isSupported = useCallback(() => {
@@ -508,11 +701,27 @@ export const useVoice = () => {
   const getVoiceInfo = useCallback(() => {
     return {
       currentVoice: selectedVoice?.name || 'Default',
+      currentLanguage: selectedLanguage,
       availableVoicesCount: availableVoices.length,
+      hindiVoicesCount: hindiVoices.length,
+      englishVoicesCount: englishVoices.length,
+      availableLanguagesCount: availableLanguages.length,
       ttsSupported: 'speechSynthesis' in window,
       sttSupported: 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
     };
-  }, [selectedVoice, availableVoices]);
+  }, [selectedVoice, selectedLanguage, availableVoices, hindiVoices, englishVoices, availableLanguages]);
+
+  // NEW: Debug function for troubleshooting
+  const debugVoiceStatus = useCallback(() => {
+    console.log('=== 🔍 VOICE DEBUG INFO ===');
+    console.log('Selected Language:', selectedLanguage);
+    console.log('Selected Voice:', selectedVoice);
+    console.log('Available Languages:', availableLanguages);
+    console.log('Hindi Voices:', hindiVoices);
+    console.log('English Voices:', englishVoices);
+    console.log('All Voices:', availableVoices);
+    console.log('=========================');
+  }, [selectedLanguage, selectedVoice, availableLanguages, hindiVoices, englishVoices, availableVoices]);
 
   // ========== RETURN API ==========
 
@@ -539,9 +748,17 @@ export const useVoice = () => {
     selectedVoice,
     changeVoice,
 
+    // NEW: Multilingual support
+    selectedLanguage,
+    availableLanguages,
+    changeLanguage,
+    hindiVoices,
+    englishVoices,
+
     // Utilities
     isSupported,
     getVoiceInfo,
+    debugVoiceStatus, // NEW: Debug helper
     error
   };
 };

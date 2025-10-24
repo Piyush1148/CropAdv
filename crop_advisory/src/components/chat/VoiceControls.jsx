@@ -285,6 +285,38 @@ export const SpeedSelector = ({ value, onChange }) => {
   );
 };
 
+// ========== NEW: LANGUAGE SELECTOR ==========
+
+export const LanguageSelector = ({ 
+  selectedLanguage, 
+  availableLanguages, 
+  onChange 
+}) => {
+  if (!availableLanguages || availableLanguages.length === 0) {
+    return null; // Don't render if no languages available
+  }
+
+  // Don't show selector if only one language available
+  if (availableLanguages.length === 1) {
+    return null;
+  }
+
+  return (
+    <SpeedControl
+      value={selectedLanguage}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label="Select language"
+      style={{ minWidth: '140px' }}
+    >
+      {availableLanguages.map(lang => (
+        <option key={lang.code} value={lang.code}>
+          {lang.flag} {lang.name}
+        </option>
+      ))}
+    </SpeedControl>
+  );
+};
+
 // ========== VOICE SETTINGS PANEL ==========
 
 export const VoiceSettingsPanel = ({
@@ -292,11 +324,22 @@ export const VoiceSettingsPanel = ({
   onSpeedChange,
   isMuted,
   onMuteToggle,
+  // NEW: Language support
+  selectedLanguage,
+  availableLanguages,
+  onLanguageChange,
   compact = false
 }) => {
   if (compact) {
     return (
       <ControlsContainer style={{ padding: '4px', gap: '4px' }}>
+        {availableLanguages && availableLanguages.length > 1 && (
+          <LanguageSelector
+            selectedLanguage={selectedLanguage}
+            availableLanguages={availableLanguages}
+            onChange={onLanguageChange}
+          />
+        )}
         <MuteButton isMuted={isMuted} onClick={onMuteToggle} />
         <SpeedSelector value={speechRate} onChange={onSpeedChange} />
       </ControlsContainer>
@@ -305,6 +348,13 @@ export const VoiceSettingsPanel = ({
 
   return (
     <ControlsContainer>
+      {availableLanguages && availableLanguages.length > 1 && (
+        <LanguageSelector
+          selectedLanguage={selectedLanguage}
+          availableLanguages={availableLanguages}
+          onChange={onLanguageChange}
+        />
+      )}
       <MuteButton isMuted={isMuted} onClick={onMuteToggle} />
       <SpeedSelector value={speechRate} onChange={onSpeedChange} />
     </ControlsContainer>
