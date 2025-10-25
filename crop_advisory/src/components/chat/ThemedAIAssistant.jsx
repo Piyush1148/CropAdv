@@ -447,6 +447,7 @@ const TypingIndicator = styled.div`
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   margin-bottom: 16px;
   max-width: 70%;
+  color: ${theme.text}; /* ✅ FIX: Make text visible (dark color) */
 
   &::after {
     content: '●●●';

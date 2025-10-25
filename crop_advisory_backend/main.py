@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import API routers
-from app.api import health, crops, weather, chat, auth
+from app.api import health, crops, weather, chat, auth, growing_guides
 
 # Import configuration
 from app.config.settings import get_settings
@@ -61,9 +61,11 @@ app.add_middleware(
 )
 
 # Include API routers with prefixes
+# Register API routers with proper prefixes
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(crops.router, prefix="/api/crops", tags=["Crop Recommendations"])
+app.include_router(growing_guides.router, prefix="/api/growing-guides", tags=["Growing Guides"])
 app.include_router(weather.router, prefix="/api/weather", tags=["Weather Data"])
 app.include_router(chat.router, prefix="/api/chat", tags=["AI Assistant"])
 

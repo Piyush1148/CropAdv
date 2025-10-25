@@ -79,6 +79,7 @@ class SimplePredictionResponse(BaseModel):
     prediction: str
     confidence: float
     probability: float
+    id: Optional[str] = None  # Prediction ID from Firestore
 
 class CropRecommendationRequest(BaseModel):
     nitrogen: float = Field(..., ge=0, le=150)
@@ -181,12 +182,19 @@ async def predict_crop_simple(request: SimplePredictionRequest, user: Optional[D
     
     response = SimplePredictionResponse(prediction=prediction, confidence=confidence, probability=confidence * 100)
 
+    # Save prediction to database and return ID
+    prediction_id = None
     if user:
         firebase_service = get_firebase_service()
         prediction_data = {"input_data": request.dict(), "prediction": response.dict(), "user_id": user["uid"], "created_at": datetime.utcnow()}
-        await firebase_service.save_prediction(user["uid"], prediction_data)
+        prediction_id = await firebase_service.save_prediction(user["uid"], prediction_data)
+        print(f"✅ Prediction saved with ID: {prediction_id}")
 
-    return response
+    # Add prediction_id to response
+    return {
+        **response.dict(),
+        "id": prediction_id  # Add the ID to the response
+    }
 
 @router.get("/list")
 async def get_supported_crops():

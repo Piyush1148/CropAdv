@@ -172,6 +172,8 @@ async def setup_profile_after_registration(
             "email": profile_data.get("email", user.get("email", "")),
             "phone_number": profile_data.get("phone_number"),
             "location": profile_data.get("location"),
+            "latitude": profile_data.get("latitude"),
+            "longitude": profile_data.get("longitude"),
             "farm_size": profile_data.get("farm_size"),
             "soil_type": profile_data.get("soil_type"),
             "irrigation_type": profile_data.get("irrigation_type")
@@ -222,6 +224,8 @@ async def setup_profile_public(profile_data: Dict[str, Any]):
             "email": profile_data.get("email", ""),
             "phone_number": profile_data.get("phone_number"),
             "location": profile_data.get("location"),
+            "latitude": profile_data.get("latitude"),
+            "longitude": profile_data.get("longitude"),
             "farm_size": profile_data.get("farm_size"),
             "soil_type": profile_data.get("soil_type"),
             "irrigation_type": profile_data.get("irrigation_type")

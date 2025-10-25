@@ -247,6 +247,8 @@ class FirebaseService:
                 "email": profile_data.get("email", ""),
                 "phone_number": profile_data.get("phone_number"),
                 "location": profile_data.get("location"),
+                "latitude": profile_data.get("latitude"),
+                "longitude": profile_data.get("longitude"),
                 "farm_size": profile_data.get("farm_size"),
                 "soil_type": profile_data.get("soil_type"),
                 "irrigation_type": profile_data.get("irrigation_type"),
@@ -442,6 +444,79 @@ class FirebaseService:
         except Exception as e:
             print(f"❌ Error counting user predictions: {str(e)}")
             return 0
+
+    async def save_growing_guide(self, user_id: str, prediction_id: str, guide_data: Dict[str, Any]) -> str:
+        """Save growing guide linked to a prediction"""
+        if not self.is_connected(): raise Exception("Firebase not connected")
+        try:
+            if 'created_at' not in guide_data: guide_data['created_at'] = datetime.utcnow()
+            guide_data['user_id'] = user_id
+            guide_data['prediction_id'] = prediction_id
+            
+            doc_ref = self.db.collection('growing_guides').document()
+            guide_data['id'] = doc_ref.id
+            doc_ref.set(guide_data)
+            
+            # Also update the prediction document to link to the guide
+            pred_ref = self.db.collection('predictions').document(prediction_id)
+            pred_ref.update({'growing_guide_id': doc_ref.id})
+            
+            print(f"✅ Growing guide saved with ID: {doc_ref.id}")
+            return doc_ref.id
+        except Exception as e:
+            print(f"❌ Error saving growing guide: {str(e)}")
+            raise e
+
+    async def get_growing_guide(self, guide_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific growing guide by ID"""
+        if not self.is_connected(): return None
+        try:
+            doc_ref = self.db.collection('growing_guides').document(guide_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                guide = doc.to_dict()
+                print(f"✅ Retrieved growing guide: {guide_id}")
+                return guide
+            else:
+                print(f"⚠️ Growing guide not found: {guide_id}")
+                return None
+        except Exception as e:
+            print(f"❌ Error getting growing guide: {str(e)}")
+            return None
+
+    async def get_growing_guide_by_prediction(self, prediction_id: str) -> Optional[Dict[str, Any]]:
+        """Get growing guide linked to a prediction"""
+        if not self.is_connected(): return None
+        try:
+            query = self.db.collection('growing_guides').where(filter=FieldFilter('prediction_id', '==', prediction_id)).limit(1)
+            docs = list(query.stream())
+            if docs:
+                guide = docs[0].to_dict()
+                print(f"✅ Retrieved growing guide for prediction: {prediction_id}")
+                return guide
+            else:
+                print(f"⚠️ No growing guide found for prediction: {prediction_id}")
+                return None
+        except Exception as e:
+            print(f"❌ Error getting growing guide by prediction: {str(e)}")
+            return None
+
+    async def get_user_growing_guides(self, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get user's growing guides (most recent first)"""
+        if not self.is_connected(): return []
+        try:
+            query = self.db.collection('growing_guides').where(filter=FieldFilter('user_id', '==', user_id)).order_by('created_at', direction=firestore.Query.DESCENDING).limit(limit)
+            docs = query.stream()
+            guides = []
+            for doc in docs:
+                guide_dict = doc.to_dict()
+                guide_dict['id'] = doc.id  # Add document ID
+                guides.append(guide_dict)
+            print(f"📊 Retrieved {len(guides)} growing guides for user {user_id}")
+            return guides
+        except Exception as e:
+            print(f"❌ Error getting user growing guides: {str(e)}")
+            return []  # Return empty list on error, not 0
 
 
 # Global service instance

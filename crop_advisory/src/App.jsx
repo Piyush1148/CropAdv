@@ -22,6 +22,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import CropRecommendationPage from './pages/CropRecommendationPage';
+import GrowingGuidePage from './pages/GrowingGuidePage';
 import AIAssistant from './pages/AIAssistant';
 import AIAssistantTest from './pages/AIAssistantTest';
 import AIAssistantSimple from './pages/AIAssistantSimple';
@@ -106,7 +107,7 @@ function App() {
                 } />
                 <Route path="/reverse-advisory" element={
                   <ProtectedRoute>
-                    <PlaceholderPage title="Growing Guide" />
+                    <GrowingGuidePage />
                   </ProtectedRoute>
                 } />
                 <Route path="/ai-assistant" element={

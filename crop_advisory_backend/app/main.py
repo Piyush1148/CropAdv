@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 load_dotenv()
 
 # Import API routers
-from .api import health, crops, weather, chat, auth, weather_enhanced
+from .api import health, crops, weather, chat, auth, weather_enhanced, growing_guides
 
 # Import configuration
 from .config.settings import get_settings
@@ -88,6 +88,7 @@ app.include_router(crops.router, prefix="/api/crops", tags=["Crop Recommendation
 app.include_router(weather.router, prefix="/api/weather", tags=["Weather Data"])
 app.include_router(weather_enhanced.router, prefix="/weather-enhanced", tags=["Weather Enhanced"])
 app.include_router(chat.router, prefix="/api/chat", tags=["AI Assistant"])
+app.include_router(growing_guides.router, prefix="/api/growing-guides", tags=["Growing Guides"])
 
 @app.get("/")
 async def root():

@@ -4,11 +4,14 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { Leaf, TrendingUp, Users, Award } from 'lucide-react';
+import { Leaf, TrendingUp, Users, Award, BookOpen } from 'lucide-react';
 import CropPredictionForm from '../components/CropPredictionForm';
 import { usePredictionHistory, useApiHealth } from '../hooks/useApi';
+import { getGuideByPrediction } from '../services/growingGuideService';
+import toast from 'react-hot-toast';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -179,9 +182,67 @@ const StatusIndicator = styled.div`
   }
 `;
 
+const ViewGuideButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  width: 100%;
+  justify-content: center;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
 const CropRecommendationPage = () => {
   const { history, isLoading: historyLoading } = usePredictionHistory(5);
   const { isHealthy } = useApiHealth();
+  const navigate = useNavigate();
+
+  const viewGrowingGuide = async (predictionId) => {
+    try {
+      const loadingToast = toast.loading('Loading growing guide...');
+      
+      const guide = await getGuideByPrediction(predictionId);
+      
+      toast.dismiss(loadingToast);
+      
+      if (guide) {
+        console.log('📖 Navigating to Growing Guide with guide:', guide);
+        navigate('/reverse-advisory', { 
+          state: { 
+            guide: guide,  // Guide data is already at root level
+            fromHistory: true 
+          } 
+        });
+      } else {
+        toast.error('No growing guide found for this prediction');
+      }
+    } catch (error) {
+      console.error('Error loading guide:', error);
+      toast.error('Failed to load growing guide');
+    }
+  };
 
   const stats = [
     {
@@ -309,6 +370,10 @@ const CropRecommendationPage = () => {
                       <div>Rain: {prediction.input_data.rainfall}mm</div>
                     </InputSummary>
                   )}
+                  <ViewGuideButton onClick={() => viewGrowingGuide(prediction.id)}>
+                    <BookOpen size={16} />
+                    View Growing Guide
+                  </ViewGuideButton>
                 </HistoryCard>
               </motion.div>
               );

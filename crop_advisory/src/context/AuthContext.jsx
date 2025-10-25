@@ -215,6 +215,8 @@ export const AuthProvider = ({ children }) => {
             email: userData.email,
             phone_number: userData.phone,
             location: userData.location,
+            latitude: userData.latitude ? parseFloat(userData.latitude) : null,
+            longitude: userData.longitude ? parseFloat(userData.longitude) : null,
             farm_size: userData.farmSize ? parseFloat(userData.farmSize) : null,
             soil_type: userData.soilType,
             irrigation_type: userData.irrigationType
@@ -244,6 +246,8 @@ export const AuthProvider = ({ children }) => {
               email: userData.email,
               phone_number: userData.phone,
               location: userData.location,
+              latitude: userData.latitude ? parseFloat(userData.latitude) : null,
+              longitude: userData.longitude ? parseFloat(userData.longitude) : null,
               farm_size: userData.farmSize ? parseFloat(userData.farmSize) : null,
               soil_type: userData.soilType,
               irrigation_type: userData.irrigationType

@@ -252,6 +252,8 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: '',
     location: '',
+    latitude: '',
+    longitude: '',
     farmSize: '',
     soilType: '',
     irrigationType: '',
@@ -260,6 +262,7 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [geocodingLocation, setGeocodingLocation] = useState(false);
   const { register, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
@@ -345,6 +348,49 @@ const RegisterPage = () => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Geocode location to get latitude/longitude
+  const geocodeLocation = async (locationText) => {
+    if (!locationText || locationText.trim().length < 3) return;
+    
+    setGeocodingLocation(true);
+    try {
+      // Use Nominatim (OpenStreetMap) - Free, no API key needed
+      const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationText)}&format=json&limit=1`;
+      
+      const response = await fetch(geocodeUrl, {
+        headers: {
+          'User-Agent': 'CropAdvisory/1.0' // Required by Nominatim
+        }
+      });
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        setFormData(prev => ({
+          ...prev,
+          latitude: parseFloat(lat).toFixed(4),
+          longitude: parseFloat(lon).toFixed(4)
+        }));
+        console.log('✅ Geocoded location:', locationText, '→', lat, lon);
+        toast.success('Location coordinates detected!');
+      } else {
+        console.warn('⚠️ No geocoding results for:', locationText);
+        toast('Could not detect coordinates. Please enter manually if needed.');
+      }
+    } catch (error) {
+      console.error('❌ Geocoding error:', error);
+      toast.error('Failed to detect coordinates. Please enter manually.');
+    } finally {
+      setGeocodingLocation(false);
+    }
+  };
+
+  const handleLocationBlur = () => {
+    if (formData.location && !formData.latitude && !formData.longitude) {
+      geocodeLocation(formData.location);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -485,10 +531,37 @@ const RegisterPage = () => {
                   label="Location"
                   value={formData.location}
                   onChange={handleChange}
+                  onBlur={handleLocationBlur}
                   error={errors.location}
                   icon={<MapPin size={18} />}
                   required
                 />
+
+                <FormRow>
+                  <Input
+                    type="number"
+                    name="latitude"
+                    placeholder="Auto-filled from location"
+                    label="Latitude"
+                    value={formData.latitude}
+                    onChange={handleChange}
+                    step="0.0001"
+                    disabled={geocodingLocation}
+                    icon={<MapPin size={18} />}
+                  />
+
+                  <Input
+                    type="number"
+                    name="longitude"
+                    placeholder="Auto-filled from location"
+                    label="Longitude"
+                    value={formData.longitude}
+                    onChange={handleChange}
+                    step="0.0001"
+                    disabled={geocodingLocation}
+                    icon={<MapPin size={18} />}
+                  />
+                </FormRow>
 
                 <FormRow>
                   <Input

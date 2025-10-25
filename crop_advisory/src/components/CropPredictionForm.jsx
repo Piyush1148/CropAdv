@@ -6,10 +6,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { Leaf, Cloud, Thermometer, Droplets, Activity, BarChart3, Loader2, CheckCircle, AlertCircle, MapPin, Zap, RefreshCw } from 'lucide-react';
+import { Leaf, Cloud, Thermometer, Droplets, Activity, BarChart3, Loader2, CheckCircle, AlertCircle, MapPin, Zap, RefreshCw, Sprout } from 'lucide-react';
 import { useCropPrediction } from '../hooks/useApi';
 import { useWeatherEnhancedPrediction, useGeolocation, useCurrentWeather } from '../hooks/useWeather';
+import { useAuth } from '../context/AuthContext';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { generateGrowingGuide } from '../services/n8nGrowingGuideService';
+import { saveGrowingGuide } from '../services/growingGuideService';
 import { cropPredictionSchema } from '../utils/validationSchemas';
 import toast from 'react-hot-toast';
 
@@ -107,7 +112,10 @@ const ErrorMessage = styled.span`
 const ButtonContainer = styled.div`
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 1rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
 `;
 
 const PredictButton = styled.button`
@@ -137,6 +145,37 @@ const PredictButton = styled.button`
 
   &:disabled {
     opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const SecondaryButton = styled.button`
+  background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+  color: white;
+  border: none;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(66, 165, 245, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
   }
@@ -412,6 +451,42 @@ const CropPredictionForm = () => {
   const formData = watch(); // Watch all form values
   const [useWeatherData, setUseWeatherData] = useState(false);
   const [currentLocation, setCurrentLocation] = useState({ latitude: 28.6139, longitude: 77.2090 });
+  const [generatingGuide, setGeneratingGuide] = useState(false);
+
+  // Function to fill form with random realistic values for testing
+  const fillRandomValues = () => {
+    const randomScenarios = [
+      { name: 'Rice/Cotton', N: 100 + Math.floor(Math.random() * 40), P: 50 + Math.floor(Math.random() * 20), K: 70 + Math.floor(Math.random() * 20), temp: 28 + Math.floor(Math.random() * 6), humidity: 75 + Math.floor(Math.random() * 15), ph: 6 + Math.random() * 0.8, rainfall: 200 + Math.floor(Math.random() * 100) },
+      { name: 'Wheat/Potato', N: 70 + Math.floor(Math.random() * 20), P: 40 + Math.floor(Math.random() * 15), K: 50 + Math.floor(Math.random() * 15), temp: 15 + Math.floor(Math.random() * 8), humidity: 50 + Math.floor(Math.random() * 15), ph: 5.5 + Math.random() * 0.8, rainfall: 60 + Math.floor(Math.random() * 40) },
+      { name: 'Maize/Corn', N: 90 + Math.floor(Math.random() * 25), P: 40 + Math.floor(Math.random() * 15), K: 60 + Math.floor(Math.random() * 20), temp: 22 + Math.floor(Math.random() * 6), humidity: 60 + Math.floor(Math.random() * 15), ph: 5.8 + Math.random() * 0.6, rainfall: 100 + Math.floor(Math.random() * 50) },
+      { name: 'Pulses/Legumes', N: 30 + Math.floor(Math.random() * 20), P: 50 + Math.floor(Math.random() * 20), K: 70 + Math.floor(Math.random() * 20), temp: 25 + Math.floor(Math.random() * 6), humidity: 35 + Math.floor(Math.random() * 15), ph: 6.5 + Math.random() * 1, rainfall: 40 + Math.floor(Math.random() * 30) },
+      { name: 'Fruits/Grapes', N: 20 + Math.floor(Math.random() * 20), P: 25 + Math.floor(Math.random() * 15), K: 30 + Math.floor(Math.random() * 20), temp: 18 + Math.floor(Math.random() * 6), humidity: 65 + Math.floor(Math.random() * 20), ph: 6.2 + Math.random() * 1, rainfall: 140 + Math.floor(Math.random() * 80) }
+    ];
+    
+    const scenario = randomScenarios[Math.floor(Math.random() * randomScenarios.length)];
+    
+    setValue('N', scenario.N.toString());
+    setValue('P', scenario.P.toString());
+    setValue('K', scenario.K.toString());
+    setValue('temperature', scenario.temp.toString());
+    setValue('humidity', scenario.humidity.toString());
+    setValue('ph', scenario.ph.toFixed(1));
+    setValue('rainfall', scenario.rainfall.toString());
+    
+    toast.success(`Filled with random values for ${scenario.name}`, { duration: 2000 });
+  };
+  
+  // Store prediction ID immediately when received (for auto-save)
+  const latestPredictionIdRef = useRef(null);
+  
+  // 🔍 DEBUG: Confirm this component loaded with the fix
+  useEffect(() => {
+    console.log('🔧 CropPredictionForm loaded with auto-save fix (v2.0)');
+  }, []);
+
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
 
   const { prediction, isLoading, error, predictCrop, clearPrediction } = useCropPrediction();
   const { getEnhancedPrediction, isLoading: weatherEnhancing, error: weatherError } = useWeatherEnhancedPrediction();
@@ -554,6 +629,24 @@ const CropPredictionForm = () => {
       
       const result = await predictCrop(predictionData);
       
+      // 🔍 DEBUG: Log complete result object
+      console.log('📦 COMPLETE RESULT OBJECT:', result);
+      console.log('📦 Result keys:', Object.keys(result || {}));
+      console.log('📦 Result.id:', result?.id);
+      console.log('📦 Type of result:', typeof result);
+      
+      // ✅ CRITICAL: Store prediction ID immediately for guide auto-save
+      if (result?.id) {
+        latestPredictionIdRef.current = result.id;
+        console.log('✅ Stored prediction ID for auto-save:', result.id);
+      } else {
+        console.warn('⚠️ Result does not have ID field!', {
+          hasId: 'id' in (result || {}),
+          resultKeys: Object.keys(result || {}),
+          resultValue: result
+        });
+      }
+      
       // 🔍 DEBUG: Log prediction result
       console.log('✅ PREDICTION RESULT:', result);
       console.log('  Predicted Crop:', result?.prediction || result?.recommendations?.[0]?.crop_name);
@@ -589,6 +682,106 @@ const CropPredictionForm = () => {
       toast.success('Weather enhancement enabled! Your prediction will use real-time weather data.');
     } else {
       toast('Weather enhancement disabled. Using manual weather inputs.');
+    }
+  };
+
+  // Generate Growing Guide from prediction result
+  const handleGenerateGuide = async () => {
+    if (!prediction || !user) {
+      toast.error('Please complete a crop prediction first');
+      return;
+    }
+
+    setGeneratingGuide(true);
+    const loadingToast = toast.loading('Generating personalized growing guide...');
+
+    try {
+      // Extract crop name from prediction
+      const cropName = typeof prediction.prediction === 'string' 
+        ? prediction.prediction 
+        : prediction.prediction?.crop || prediction.crop || 'Unknown';
+
+      // Calculate current season based on date
+      const month = new Date().getMonth() + 1;
+      let season = 'Kharif';
+      if (month >= 10 || month <= 2) season = 'Rabi';
+      else if (month >= 3 && month <= 5) season = 'Zaid';
+
+      // Prepare comprehensive data for n8n workflow
+      const guideData = {
+        crop: cropName,
+        location: formData.location || profile?.location || 'India',
+        latitude: profile?.latitude || currentLocation.latitude || 28.6139,
+        longitude: profile?.longitude || currentLocation.longitude || 77.2090,
+        soilType: profile?.soilType || 'Loamy',
+        season: season,
+        soilData: {
+          nitrogen: parseFloat(formData.N) || 0,
+          phosphorus: parseFloat(formData.P) || 0,
+          potassium: parseFloat(formData.K) || 0,
+          ph: parseFloat(formData.ph) || 7.0,
+          rainfall: parseFloat(formData.rainfall) || 200
+        },
+        farmSize: profile?.farmSize || 1,
+        irrigationType: profile?.irrigationType || 'Drip',
+        userId: user.uid,
+        language: 'en'
+      };
+
+      console.log('🌾 Generating guide with data:', guideData);
+
+      const guide = await generateGrowingGuide(guideData);
+
+      console.log('✅ Guide received from service:', guide);
+      console.log('📋 Guide structure:', {
+        hasCropName: !!guide?.cropName,
+        hasLocation: !!guide?.location,
+        hasSummary: !!guide?.summary,
+        hasTimeline: !!guide?.timeline,
+        hasSections: !!guide?.sections,
+        sectionsCount: guide?.sections?.length || 0
+      });
+
+      // Auto-save guide to Firebase (non-blocking - don't wait for it)
+      // ✅ FIXED: Use ref instead of state to avoid async timing issues
+      const predictionId = latestPredictionIdRef.current || prediction?.id;
+      
+      if (predictionId) {
+        console.log('💾 Auto-saving guide to Firebase for prediction:', predictionId);
+        saveGrowingGuide(predictionId, guide)
+          .then((savedGuide) => {
+            console.log('✅ Guide auto-saved to Firebase with ID:', savedGuide?.id);
+            toast.success('Guide saved to your history!', { duration: 2000 });
+          })
+          .catch((error) => {
+            console.error('❌ Failed to auto-save guide:', error);
+            toast.error('Guide generated but not saved to history');
+          });
+      } else {
+        console.warn('⚠️ No prediction ID available for auto-save');
+        console.warn('  latestPredictionIdRef.current:', latestPredictionIdRef.current);
+        console.warn('  prediction?.id:', prediction?.id);
+      }
+
+      toast.dismiss(loadingToast);
+      toast.success('Growing guide generated successfully!');
+
+      // Navigate to Growing Guide page with the generated guide
+      navigate('/reverse-advisory', { 
+        state: { 
+          guide,
+          cropName,
+          fromPrediction: true,
+          predictionId: predictionId  // Pass the stored prediction ID
+        } 
+      });
+
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error(`Failed to generate guide: ${error.message}`);
+      console.error('Guide generation error:', error);
+    } finally {
+      setGeneratingGuide(false);
     }
   };
 
@@ -854,6 +1047,16 @@ const CropPredictionForm = () => {
       </Form>
 
       <ButtonContainer>
+        <SecondaryButton 
+          type="button"
+          onClick={fillRandomValues}
+          disabled={isLoading || weatherEnhancing}
+          style={{ marginRight: '1rem' }}
+        >
+          <RefreshCw size={20} />
+          Fill Random Values (Test)
+        </SecondaryButton>
+        
         <PredictButton 
           type="submit" 
           onClick={handleFormSubmit(handleSubmit)}
@@ -924,6 +1127,30 @@ const CropPredictionForm = () => {
               <div className="value">{new Date().toLocaleString()}</div>
             </MetaItem>
           </MetaInfo>
+
+          <ButtonContainer style={{ marginTop: '1.5rem' }}>
+            <PredictButton 
+              type="button" 
+              onClick={handleGenerateGuide}
+              disabled={generatingGuide}
+              style={{ 
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                flex: 1
+              }}
+            >
+              {generatingGuide ? (
+                <>
+                  <Loader2 className="spinner" />
+                  Generating Guide...
+                </>
+              ) : (
+                <>
+                  <Sprout />
+                  Generate Growing Guide
+                </>
+              )}
+            </PredictButton>
+          </ButtonContainer>
         </ResultContainer>
       )}
     </FormContainer>

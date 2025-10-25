@@ -1,0 +1,131 @@
+Generate a comprehensive, personalized growing guide based on the following data:
+
+=== CROP INFORMATION ===
+Crop: {{ $json.cropName }}
+Location: {{ $json.location }} ({{ $json.latitude }}°N, {{ $json.longitude }}°E)
+Season: {{ $json.season }}
+
+=== SOIL ANALYSIS (From Recent Soil Test) ===
+Soil Type: {{ $json.soilType }}
+Nitrogen (N): {{ $json.soilData.nitrogen }} kg/ha - {{ $json.soilData.nitrogen < 200 ? 'LOW - Needs supplementation' : $json.soilData.nitrogen < 300 ? 'MEDIUM - Moderate fertilization needed' : 'HIGH - Reduce fertilizer application' }}
+Phosphorus (P): {{ $json.soilData.phosphorus }} kg/ha - {{ $json.soilData.phosphorus < 25 ? 'LOW - Needs supplementation' : $json.soilData.phosphorus < 50 ? 'MEDIUM - Moderate fertilization needed' : 'HIGH - Reduce fertilizer application' }}
+Potassium (K): {{ $json.soilData.potassium }} kg/ha - {{ $json.soilData.potassium < 150 ? 'LOW - Needs supplementation' : $json.soilData.potassium < 280 ? 'MEDIUM - Moderate fertilization needed' : 'HIGH - Reduce fertilizer application' }}
+pH Level: {{ $json.soilData.ph }} - {{ $json.soilData.ph < 6.0 ? 'ACIDIC - Needs lime application' : $json.soilData.ph > 7.5 ? 'ALKALINE - Needs sulfur/gypsum' : 'OPTIMAL for most crops' }}
+Recent Rainfall: {{ $json.soilData.rainfall }}mm
+
+=== FARM DETAILS ===
+Farm Size: {{ $json.farmSize }} acres
+Irrigation System: {{ $json.irrigationType }}
+
+=== WEATHER FORECAST (Next 7 Days) ===
+{{ $input.all()[1].json.weatherData ? 'Temperature: ' + $input.all()[1].json.weatherData.temperature + '°C, Humidity: ' + $input.all()[1].json.weatherData.humidity + '%, Conditions: ' + $input.all()[1].json.weatherData.description : 'Weather data available from previous nodes' }}
+Climate Suitability: {{ $input.all()[1].json.climateSuitability || 'Good' }}
+
+=== SOIL COMPOSITION (SoilGrids Data) ===
+{{ $input.all()[3].json.soilComposition ? 'pH: ' + $input.all()[3].json.soilComposition.ph + ', Nitrogen: ' + $input.all()[3].json.soilComposition.nitrogen + ', Clay: ' + $input.all()[3].json.soilComposition.clay + '%, Sand: ' + $input.all()[3].json.soilComposition.sand + '%' : 'Soil data available from previous nodes' }}
+
+=== INSTRUCTIONS ===
+Based on the ACTUAL soil test results provided above (especially N={{ $json.soilData.nitrogen }}, P={{ $json.soilData.phosphorus }}, K={{ $json.soilData.potassium }}, pH={{ $json.soilData.ph }}), create a comprehensive, personalized growing guide with these 8 sections:
+
+1. LAND PREPARATION
+   - Specific tillage recommendations for {{ $json.soilType }}
+   - Field preparation timeline for {{ $json.farmSize }} acres
+   - Soil amendments needed based on pH {{ $json.soilData.ph }}
+
+2. SEED SELECTION & SOWING
+   - Best varieties for {{ $json.location }} in {{ $json.season }} season
+   - Seed rate calculation for {{ $json.farmSize }} acres
+   - Optimal sowing dates for {{ $json.location }}
+   - Seed treatment recommendations
+
+3. IRRIGATION MANAGEMENT
+   - Water requirements for {{ $json.irrigationType }} system
+   - Irrigation schedule adjusted for {{ $json.soilData.rainfall }}mm recent rainfall
+   - Critical irrigation stages
+   - Water calculation for {{ $json.farmSize }} acres
+
+4. FERTILIZER MANAGEMENT
+   ⚠️ CRITICAL: Use ACTUAL soil test values to calculate fertilizer needs:
+   - Current N level: {{ $json.soilData.nitrogen }} kg/ha
+   - Current P level: {{ $json.soilData.phosphorus }} kg/ha
+   - Current K level: {{ $json.soilData.potassium }} kg/ha
+   - Soil pH: {{ $json.soilData.ph }}
+   
+   Calculate PRECISE fertilizer recommendations:
+   - Base dose (at sowing) - exact quantities in kg for {{ $json.farmSize }} acres
+   - Top dressing schedule - when and how much
+   - Organic amendments if pH correction needed
+   - Total cost estimation in INR
+
+5. PEST & DISEASE MANAGEMENT
+   - Common pests in {{ $json.location }} region during {{ $json.season }}
+   - Weather-based disease risk assessment
+   - Preventive measures
+   - Integrated Pest Management (IPM) practices
+   - When to scout for pests
+
+6. CROP CARE CALENDAR
+   - Week-by-week schedule from sowing to harvest
+   - Growth stage milestones
+   - Monitoring checklist
+   - Critical care periods
+
+7. HARVESTING GUIDELINES
+   - Maturity indicators
+   - Optimal harvest timing for {{ $json.location }} climate
+   - Harvesting method
+   - Expected yield for {{ $json.farmSize }} acres
+   - Post-harvest handling
+
+8. COST-BENEFIT ANALYSIS
+   - Input costs breakdown for {{ $json.farmSize }} acres:
+     * Seeds
+     * Fertilizers (based on calculated needs)
+     * Pesticides
+     * Labor
+     * Irrigation
+   - Expected revenue based on typical yields
+   - Break-even analysis
+   - Profitability estimation
+
+IMPORTANT GUIDELINES:
+- Use SPECIFIC numbers, not ranges
+- Scale ALL recommendations to {{ $json.farmSize }} acres
+- Base fertilizer advice on ACTUAL soil test values (N={{ $json.soilData.nitrogen }}, P={{ $json.soilData.phosphorus }}, K={{ $json.soilData.potassium }})
+- Consider {{ $json.irrigationType }} irrigation type in water calculations
+- Adjust for {{ $json.season }} season and {{ $json.location }} climate
+- Provide actionable, practical advice
+
+YOU MUST RESPOND WITH PURE JSON ONLY - NO MARKDOWN, NO ```json BLOCKS, NO ADDITIONAL TEXT BEFORE OR AFTER.
+
+Return this exact JSON structure:
+{
+  "cropName": "string",
+  "location": "string",
+  "season": "string",
+  "generatedAt": "ISO date string",
+  "summary": {
+    "climateSuitability": "good/excellent/moderate",
+    "soilQuality": "good/excellent/moderate",
+    "estimatedYield": "X quintals/acre",
+    "totalDuration": "X days/months"
+  },
+  "timeline": {
+    "landPreparation": "X weeks",
+    "sowingPeriod": "Month-Month",
+    "firstHarvest": "X days after sowing",
+    "totalDuration": "X months"
+  },
+  "sections": [
+    {"title": "Land Preparation", "content": "Detailed content with specific numbers for the farm size"},
+    {"title": "Seed Selection & Sowing", "content": "Detailed content"},
+    {"title": "Irrigation Management", "content": "Detailed content for the irrigation system"},
+    {"title": "Fertilizer Management", "content": "Based on actual NPK and pH values with exact calculations"},
+    {"title": "Pest & Disease Management", "content": "Detailed content"},
+    {"title": "Crop Care Calendar", "content": "Week-by-week schedule"},
+    {"title": "Harvesting Guidelines", "content": "Detailed harvesting instructions"},
+    {"title": "Cost-Benefit Analysis", "content": "Complete financial breakdown"}
+  ]
+}
+
+START YOUR RESPONSE WITH { AND END WITH } - NOTHING ELSE.
