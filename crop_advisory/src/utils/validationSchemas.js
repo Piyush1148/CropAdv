@@ -6,13 +6,14 @@
 import * as yup from 'yup';
 
 // Crop Prediction Form Validation Schema
+// ✅ UPDATED: Validation ranges now match backend API (crops.py)
 export const cropPredictionSchema = yup.object({
   N: yup
     .number()
     .typeError('Nitrogen must be a number')
     .required('Nitrogen (N) is required')
-    .min(0, 'Nitrogen must be at least 0')
-    .max(140, 'Nitrogen must not exceed 140')
+    .min(0, 'Nitrogen must be at least 0 kg/ha')
+    .max(300, 'Nitrogen must not exceed 300 kg/ha')
     .test('is-decimal', 'Nitrogen must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
       return /^\d+(\.\d{1,2})?$/.test(value.toString());
@@ -22,8 +23,8 @@ export const cropPredictionSchema = yup.object({
     .number()
     .typeError('Phosphorus must be a number')
     .required('Phosphorus (P) is required')
-    .min(5, 'Phosphorus must be at least 5')
-    .max(145, 'Phosphorus must not exceed 145')
+    .min(0, 'Phosphorus must be at least 0 kg/ha')
+    .max(300, 'Phosphorus must not exceed 300 kg/ha')
     .test('is-decimal', 'Phosphorus must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
       return /^\d+(\.\d{1,2})?$/.test(value.toString());
@@ -33,8 +34,8 @@ export const cropPredictionSchema = yup.object({
     .number()
     .typeError('Potassium must be a number')
     .required('Potassium (K) is required')
-    .min(5, 'Potassium must be at least 5')
-    .max(205, 'Potassium must not exceed 205')
+    .min(0, 'Potassium must be at least 0 kg/ha')
+    .max(300, 'Potassium must not exceed 300 kg/ha')
     .test('is-decimal', 'Potassium must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
       return /^\d+(\.\d{1,2})?$/.test(value.toString());
@@ -44,19 +45,19 @@ export const cropPredictionSchema = yup.object({
     .number()
     .typeError('Temperature must be a number')
     .required('Temperature is required')
-    .min(8, 'Temperature must be at least 8°C')
-    .max(43, 'Temperature must not exceed 43°C')
+    .min(-10, 'Temperature must be at least -10°C')
+    .max(60, 'Temperature must not exceed 60°C')
     .test('is-decimal', 'Temperature must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
-      return /^\d+(\.\d{1,2})?$/.test(value.toString());
+      return /^-?\d+(\.\d{1,2})?$/.test(value.toString());
     }),
 
   humidity: yup
     .number()
     .typeError('Humidity must be a number')
     .required('Humidity is required')
-    .min(14, 'Humidity must be at least 14%')
-    .max(99, 'Humidity must not exceed 99%')
+    .min(0, 'Humidity must be at least 0%')
+    .max(100, 'Humidity must not exceed 100%')
     .test('is-decimal', 'Humidity must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
       return /^\d+(\.\d{1,2})?$/.test(value.toString());
@@ -66,8 +67,8 @@ export const cropPredictionSchema = yup.object({
     .number()
     .typeError('pH must be a number')
     .required('pH value is required')
-    .min(3.5, 'pH must be at least 3.5')
-    .max(9.9, 'pH must not exceed 9.9')
+    .min(0, 'pH must be at least 0')
+    .max(14, 'pH must not exceed 14')
     .test('is-decimal', 'pH must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
       return /^\d+(\.\d{1,2})?$/.test(value.toString());
@@ -77,8 +78,8 @@ export const cropPredictionSchema = yup.object({
     .number()
     .typeError('Rainfall must be a number')
     .required('Rainfall is required')
-    .min(20, 'Rainfall must be at least 20mm')
-    .max(298, 'Rainfall must not exceed 298mm')
+    .min(0, 'Rainfall must be at least 0mm')
+    .max(4000, 'Rainfall must not exceed 4000mm')
     .test('is-decimal', 'Rainfall must have at most 2 decimal places', (value) => {
       if (value === undefined) return true;
       return /^\d+(\.\d{1,2})?$/.test(value.toString());

@@ -454,13 +454,89 @@ const CropPredictionForm = () => {
   const [generatingGuide, setGeneratingGuide] = useState(false);
 
   // Function to fill form with random realistic values for testing
+  // ✅ UPDATED: Now uses full backend API ranges (N:0-300, P:0-300, K:0-300, Temp:-10-60, Humidity:0-100, pH:0-14, Rainfall:0-4000)
   const fillRandomValues = () => {
     const randomScenarios = [
-      { name: 'Rice/Cotton', N: 100 + Math.floor(Math.random() * 40), P: 50 + Math.floor(Math.random() * 20), K: 70 + Math.floor(Math.random() * 20), temp: 28 + Math.floor(Math.random() * 6), humidity: 75 + Math.floor(Math.random() * 15), ph: 6 + Math.random() * 0.8, rainfall: 200 + Math.floor(Math.random() * 100) },
-      { name: 'Wheat/Potato', N: 70 + Math.floor(Math.random() * 20), P: 40 + Math.floor(Math.random() * 15), K: 50 + Math.floor(Math.random() * 15), temp: 15 + Math.floor(Math.random() * 8), humidity: 50 + Math.floor(Math.random() * 15), ph: 5.5 + Math.random() * 0.8, rainfall: 60 + Math.floor(Math.random() * 40) },
-      { name: 'Maize/Corn', N: 90 + Math.floor(Math.random() * 25), P: 40 + Math.floor(Math.random() * 15), K: 60 + Math.floor(Math.random() * 20), temp: 22 + Math.floor(Math.random() * 6), humidity: 60 + Math.floor(Math.random() * 15), ph: 5.8 + Math.random() * 0.6, rainfall: 100 + Math.floor(Math.random() * 50) },
-      { name: 'Pulses/Legumes', N: 30 + Math.floor(Math.random() * 20), P: 50 + Math.floor(Math.random() * 20), K: 70 + Math.floor(Math.random() * 20), temp: 25 + Math.floor(Math.random() * 6), humidity: 35 + Math.floor(Math.random() * 15), ph: 6.5 + Math.random() * 1, rainfall: 40 + Math.floor(Math.random() * 30) },
-      { name: 'Fruits/Grapes', N: 20 + Math.floor(Math.random() * 20), P: 25 + Math.floor(Math.random() * 15), K: 30 + Math.floor(Math.random() * 20), temp: 18 + Math.floor(Math.random() * 6), humidity: 65 + Math.floor(Math.random() * 20), ph: 6.2 + Math.random() * 1, rainfall: 140 + Math.floor(Math.random() * 80) }
+      { 
+        name: 'Rice/Cotton (High Nutrients)', 
+        N: 100 + Math.floor(Math.random() * 150),      // 100-250 kg/ha
+        P: 50 + Math.floor(Math.random() * 100),        // 50-150 kg/ha
+        K: 70 + Math.floor(Math.random() * 130),        // 70-200 kg/ha
+        temp: 25 + Math.floor(Math.random() * 15),      // 25-40°C
+        humidity: 70 + Math.floor(Math.random() * 25),  // 70-95%
+        ph: 6 + Math.random() * 2.5,                    // 6.0-8.5
+        rainfall: 1200 + Math.floor(Math.random() * 1500) // 1200-2700mm
+      },
+      { 
+        name: 'Wheat/Potato (Cool Climate)', 
+        N: 60 + Math.floor(Math.random() * 80),         // 60-140 kg/ha
+        P: 30 + Math.floor(Math.random() * 70),         // 30-100 kg/ha
+        K: 40 + Math.floor(Math.random() * 80),         // 40-120 kg/ha
+        temp: 10 + Math.floor(Math.random() * 15),      // 10-25°C
+        humidity: 45 + Math.floor(Math.random() * 30),  // 45-75%
+        ph: 5.5 + Math.random() * 2,                    // 5.5-7.5
+        rainfall: 400 + Math.floor(Math.random() * 600) // 400-1000mm
+      },
+      { 
+        name: 'Maize/Corn (Medium Range)', 
+        N: 80 + Math.floor(Math.random() * 100),        // 80-180 kg/ha
+        P: 40 + Math.floor(Math.random() * 80),         // 40-120 kg/ha
+        K: 50 + Math.floor(Math.random() * 100),        // 50-150 kg/ha
+        temp: 20 + Math.floor(Math.random() * 15),      // 20-35°C
+        humidity: 55 + Math.floor(Math.random() * 30),  // 55-85%
+        ph: 5.5 + Math.random() * 2,                    // 5.5-7.5
+        rainfall: 600 + Math.floor(Math.random() * 800) // 600-1400mm
+      },
+      { 
+        name: 'Pulses/Legumes (Low Nitrogen)', 
+        N: 20 + Math.floor(Math.random() * 60),         // 20-80 kg/ha
+        P: 40 + Math.floor(Math.random() * 80),         // 40-120 kg/ha
+        K: 60 + Math.floor(Math.random() * 100),        // 60-160 kg/ha
+        temp: 22 + Math.floor(Math.random() * 12),      // 22-34°C
+        humidity: 30 + Math.floor(Math.random() * 40),  // 30-70%
+        ph: 6 + Math.random() * 2.5,                    // 6.0-8.5
+        rainfall: 300 + Math.floor(Math.random() * 500) // 300-800mm
+      },
+      { 
+        name: 'Fruits/Grapes (Moderate)', 
+        N: 30 + Math.floor(Math.random() * 80),         // 30-110 kg/ha
+        P: 25 + Math.floor(Math.random() * 75),         // 25-100 kg/ha
+        K: 40 + Math.floor(Math.random() * 100),        // 40-140 kg/ha
+        temp: 15 + Math.floor(Math.random() * 15),      // 15-30°C
+        humidity: 60 + Math.floor(Math.random() * 30),  // 60-90%
+        ph: 5.5 + Math.random() * 2.5,                  // 5.5-8.0
+        rainfall: 800 + Math.floor(Math.random() * 1200) // 800-2000mm
+      },
+      { 
+        name: 'Cold Climate Extreme', 
+        N: 40 + Math.floor(Math.random() * 60),         // 40-100 kg/ha
+        P: 20 + Math.floor(Math.random() * 60),         // 20-80 kg/ha
+        K: 30 + Math.floor(Math.random() * 70),         // 30-100 kg/ha
+        temp: -5 + Math.floor(Math.random() * 20),      // -5-15°C (Testing cold range)
+        humidity: 50 + Math.floor(Math.random() * 40),  // 50-90%
+        ph: 5 + Math.random() * 3,                      // 5.0-8.0
+        rainfall: 200 + Math.floor(Math.random() * 400) // 200-600mm
+      },
+      { 
+        name: 'Hot Arid Zone', 
+        N: 50 + Math.floor(Math.random() * 100),        // 50-150 kg/ha
+        P: 30 + Math.floor(Math.random() * 80),         // 30-110 kg/ha
+        K: 40 + Math.floor(Math.random() * 90),         // 40-130 kg/ha
+        temp: 35 + Math.floor(Math.random() * 20),      // 35-55°C (Testing hot range)
+        humidity: 10 + Math.floor(Math.random() * 30),  // 10-40%
+        ph: 7 + Math.random() * 3,                      // 7.0-10.0
+        rainfall: 50 + Math.floor(Math.random() * 250)  // 50-300mm
+      },
+      { 
+        name: 'High Rainfall Tropical', 
+        N: 120 + Math.floor(Math.random() * 150),       // 120-270 kg/ha
+        P: 60 + Math.floor(Math.random() * 120),        // 60-180 kg/ha
+        K: 80 + Math.floor(Math.random() * 150),        // 80-230 kg/ha
+        temp: 25 + Math.floor(Math.random() * 10),      // 25-35°C
+        humidity: 80 + Math.floor(Math.random() * 20),  // 80-100%
+        ph: 4.5 + Math.random() * 2,                    // 4.5-6.5
+        rainfall: 2500 + Math.floor(Math.random() * 1500) // 2500-4000mm (Testing max rainfall)
+      }
     ];
     
     const scenario = randomScenarios[Math.floor(Math.random() * randomScenarios.length)];
@@ -473,7 +549,7 @@ const CropPredictionForm = () => {
     setValue('ph', scenario.ph.toFixed(1));
     setValue('rainfall', scenario.rainfall.toString());
     
-    toast.success(`Filled with random values for ${scenario.name}`, { duration: 2000 });
+    toast.success(`🌾 Filled with random values for ${scenario.name}`, { duration: 2500, icon: '🎲' });
   };
   
   // Store prediction ID immediately when received (for auto-save)
@@ -894,7 +970,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Enter nitrogen content (0-140)"
+            placeholder="Enter nitrogen content (0-300)"
             $hasError={!!errors.N}
             {...register('N')}
           />
@@ -914,7 +990,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Enter phosphorus content (5-145)"
+            placeholder="Enter phosphorus content (0-300)"
             $hasError={!!errors.P}
             {...register('P')}
           />
@@ -934,7 +1010,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Enter potassium content (5-205)"
+            placeholder="Enter potassium content (0-300)"
             $hasError={!!errors.K}
             {...register('K')}
           />
@@ -973,7 +1049,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Enter average temperature (8-43°C)"
+            placeholder="Enter average temperature (-10 to 60°C)"
             $hasError={!!errors.temperature}
             {...register('temperature')}
           />
@@ -993,7 +1069,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Relative humidity (14-99%)"
+            placeholder="Relative humidity (0-100%)"
             $hasError={!!errors.humidity}
             {...register('humidity')}
           />
@@ -1013,7 +1089,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Soil pH (3.5-9.9)"
+            placeholder="Soil pH (0-14)"
             $hasError={!!errors.ph}
             {...register('ph')}
           />
@@ -1033,7 +1109,7 @@ const CropPredictionForm = () => {
           <Input
             type="number"
             step="0.1"
-            placeholder="Annual rainfall (20-298mm)"
+            placeholder="Annual rainfall (0-4000mm)"
             $hasError={!!errors.rainfall}
             {...register('rainfall')}
           />
