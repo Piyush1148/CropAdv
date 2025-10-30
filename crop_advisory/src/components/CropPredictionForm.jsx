@@ -16,6 +16,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { generateGrowingGuide } from '../services/n8nGrowingGuideService';
 import { saveGrowingGuide } from '../services/growingGuideService';
 import { cropPredictionSchema } from '../utils/validationSchemas';
+import Loading from './common/Loading';
 import toast from 'react-hot-toast';
 
 const FormContainer = styled.div`
@@ -422,6 +423,31 @@ const WeatherInfoItem = styled.div`
     font-weight: 600;
     color: #1f2937;
     font-size: 0.95rem;
+  }
+`;
+
+// 🌱 NEW: Full-screen modal for growing guide generation
+const GeneratingGuideOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease-out;
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 `;
 
@@ -862,6 +888,7 @@ const CropPredictionForm = () => {
   };
 
   return (
+    <>
     <FormContainer>
       <Title>
         <Leaf />
@@ -1230,6 +1257,14 @@ const CropPredictionForm = () => {
         </ResultContainer>
       )}
     </FormContainer>
+
+    {/* 🌱 Growing Guide Generation Loading Modal */}
+    {generatingGuide && (
+      <GeneratingGuideOverlay>
+        <Loading variant="growingGuide" />
+      </GeneratingGuideOverlay>
+    )}
+    </>
   );
 };
 

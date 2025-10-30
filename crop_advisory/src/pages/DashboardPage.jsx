@@ -41,10 +41,27 @@ import {
   useGeolocation
 } from '../hooks/useWeather';
 
+// 🎨 NEW: Smooth fade-in animation for dashboard content
+const fadeIn = `
+  @keyframes fadeInDashboard {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
 const DashboardContainer = styled.div`
   min-height: 100vh;
   background: ${props => props.theme.colors.background.primary};
   padding: 2rem 0;
+  animation: fadeInDashboard 0.5s ease-out;
+  
+  ${fadeIn}
 `;
 
 const Container = styled.div`
@@ -535,7 +552,7 @@ const DashboardPage = () => {
   ];
 
   if (isLoading || statsLoading) {
-    return <Loading variant="spinner" overlay />;
+    return <Loading variant="dashboard" />;
   }
 
   return (

@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sprout, 
@@ -40,6 +40,18 @@ import { getUserGuides } from '../services/growingGuideService';
 
 // ==================== STYLED COMPONENTS ====================
 
+// 🌱 Fade-in animation for smooth page load
+const fadeInGrowingGuide = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
 const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f9f0 0%, #e8f5e8 100%);
@@ -49,6 +61,7 @@ const PageContainer = styled.div`
 const Container = styled.div`
   max-width: 1200px;
   margin: 0 auto;
+  animation: ${fadeInGrowingGuide} 0.6s ease-out;
 `;
 
 // Header Section
@@ -705,7 +718,7 @@ const GrowingGuidePage = () => {
     return (
       <PageContainer>
         <Container>
-          <Loading size="lg" />
+          <Loading variant="growingGuide" />
         </Container>
       </PageContainer>
     );
